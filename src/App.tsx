@@ -20,7 +20,7 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 font-inter">
+    <div className="min-h-screen bg-gradient-to-br from-black-100 via-brown-50 to-black-200 font-inter">
       <Header 
         cartItemsCount={cart.getTotalItems()}
         onCartClick={() => handleViewChange('cart')}
