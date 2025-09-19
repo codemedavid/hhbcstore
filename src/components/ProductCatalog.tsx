@@ -103,10 +103,10 @@ export default function ProductCatalog({ products, addToCart, cartItems, updateQ
       {/* Header */}
       <div className="text-center mb-12">
         <h2 className="text-5xl font-bold text-soft-800 mb-6 animate-fade-in">
-          ✨ Discover Our Beauty Collection ✨
+          ✨ Discover Our Premium Collection ✨
         </h2>
         <p className="text-xl text-soft-600 max-w-3xl mx-auto leading-relaxed">
-          Explore our curated selection of premium beauty products for hair, skin, cosmetics, and nail care 💕
+          Explore our curated selection of premium  products for hair, skin, cosmetics, and nail care 💕
         </p>
       </div>
 

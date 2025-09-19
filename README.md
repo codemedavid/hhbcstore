@@ -1,6 +1,6 @@
-# H&HBC SHOPPE E-commerce
+# H&hbc SHOPPE E-commerce
 
-A modern e-commerce platform for H&HBC SHOPPE beauty products featuring product variations, add-ons, and seamless checkout experience.
+A modern e-commerce platform for H&hbc SHOPPE beauty products featuring product variations, add-ons, and seamless checkout experience.
 
 ## Features
 - Product categories: Hair Care, Cosmetics, Skin Care, Nail Care

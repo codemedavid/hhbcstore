@@ -48,7 +48,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     const totalWithShipping = totalPrice + shippingFee;
     
     const orderDetails = `
-🛍️ H&HBC SHOPPE ORDER
+🛍️ H&hbc SHOPPE ORDER
 
 👤 Customer: ${customerName}
 📞 Contact: ${contactNumber}
@@ -86,7 +86,7 @@ ${cartItems.map(item => {
 
 ${notes ? `📝 Notes: ${notes}` : ''}
 
-Please confirm this order to proceed. Thank you for choosing H&HBC SHOPPE! 💄✨
+Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄✨
     `.trim();
 
     const encodedMessage = encodeURIComponent(orderDetails);
