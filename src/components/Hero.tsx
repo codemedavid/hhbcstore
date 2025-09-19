@@ -30,7 +30,7 @@ const Hero: React.FC = () => {
         </h1>
         
         <p className="text-xl text-soft-600 mb-12 max-w-4xl mx-auto animate-slide-up leading-relaxed font-light">
-          Discover your perfect beauty routine with our curated collection of premium hair care, 
+          Discover your perfect personal care routine with our curated collection of premium hair care, 
           cosmetics, skin care, and nail care products. Quality ingredients, stunning results. 💕
         </p>
         
