@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Tag, X } from 'lucide-react';
 import { CartItem, PaymentMethod, ShippingMethod } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useOrders } from '../hooks/useOrders';
+import { supabase } from '../lib/supabase';
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -11,6 +13,7 @@ interface CheckoutProps {
 
 const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) => {
   const { paymentMethods } = usePaymentMethods();
+  const { createOrder, loading: orderLoading } = useOrders();
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
@@ -24,8 +27,14 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('lbc-standard');
   const [shippingFee, setShippingFee] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
-  const [referenceNumber, setReferenceNumber] = useState('');
   const [notes, setNotes] = useState('');
+  
+  // Voucher states
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherError, setVoucherError] = useState('');
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [voucherSuccess, setVoucherSuccess] = useState('');
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -44,11 +53,141 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     setStep('payment');
   };
 
-  const handlePlaceOrder = () => {
-    const totalWithShipping = totalPrice + shippingFee;
+  // Voucher functions
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError('Please enter a voucher code');
+      setVoucherSuccess('');
+      return;
+    }
+
+    try {
+      setVoucherError('');
+      setVoucherSuccess('');
+      
+      const { data, error } = await supabase
+        .from('vouchers')
+        .select('*')
+        .eq('code', voucherCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setVoucherError('❌ Invalid voucher code. Please check and try again.');
+        setVoucherSuccess('');
+        return;
+      }
+
+      // Debug voucher data
+      console.log('Voucher data:', {
+        code: data.code,
+        max_uses: data.max_uses,
+        used_count: data.used_count,
+        is_active: data.is_active,
+        expires_at: data.expires_at
+      });
+
+      // Check if voucher is expired
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        setVoucherError('⏰ This voucher has expired. Please use a valid voucher.');
+        setVoucherSuccess('');
+        return;
+      }
+
+      // Check if voucher has reached max uses
+      if (data.max_uses !== null && data.max_uses !== undefined && data.used_count >= data.max_uses) {
+        setVoucherError(`🚫 Voucher has reached maximum uses (${data.used_count}/${data.max_uses}). This voucher is no longer available.`);
+        setVoucherSuccess('');
+        return;
+      }
+
+      // Double-check that voucher is still active (in case it was deactivated)
+      if (!data.is_active) {
+        setVoucherError('❌ This voucher is no longer active. Please use a different voucher.');
+        setVoucherSuccess('');
+        return;
+      }
+
+      // Check minimum order amount
+      if (data.min_order_amount > totalPrice) {
+        setVoucherError(`💰 Minimum order amount is ₱${data.min_order_amount}. Add more items to use this voucher.`);
+        setVoucherSuccess('');
+        return;
+      }
+
+      // Calculate discount
+      let discount = 0;
+      if (data.discount_type === 'percentage') {
+        discount = (totalPrice * data.discount_value) / 100;
+      } else {
+        discount = Math.min(data.discount_value, totalPrice);
+      }
+
+      // Convert snake_case to camelCase for frontend
+      const formattedVoucher = {
+        id: data.id,
+        code: data.code,
+        discountType: data.discount_type,
+        discountValue: data.discount_value,
+        minOrderAmount: data.min_order_amount,
+        maxUses: data.max_uses,
+        usedCount: data.used_count,
+        isActive: data.is_active,
+        expiresAt: data.expires_at,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      setAppliedVoucher(formattedVoucher);
+      setVoucherDiscount(discount);
+      setVoucherCode('');
+      setVoucherSuccess(`✅ Voucher "${data.code}" applied successfully! You saved ₱${discount.toFixed(2)}.`);
+      setVoucherError('');
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setVoucherSuccess('');
+      }, 5000);
+    } catch (error) {
+      console.error('Error applying voucher:', error);
+      setVoucherError('❌ Failed to apply voucher. Please try again.');
+      setVoucherSuccess('');
+    }
+  };
+
+  const removeVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherDiscount(0);
+    setVoucherError('');
+    setVoucherSuccess('');
+  };
+
+  const handlePlaceOrder = async () => {
+    const totalWithShipping = totalPrice + shippingFee - voucherDiscount;
     
-    const orderDetails = `
+    try {
+      // Create order in database
+      const orderData = {
+        customer_name: customerName,
+        contact_number: contactNumber,
+        shipping_address: shippingAddress,
+        shipping_method: shippingMethod,
+        shipping_fee: shippingFee,
+        subtotal: totalPrice,
+        voucher_discount: voucherDiscount,
+        total_amount: totalWithShipping,
+        payment_method: selectedPaymentMethod?.name || paymentMethod,
+        notes: notes || undefined,
+        voucher_id: appliedVoucher?.id,
+        voucher_code: appliedVoucher?.code
+      };
+
+      const order = await createOrder(orderData, cartItems);
+    
+      // Generate order details for Messenger
+      const orderDetails = `
 🛍️ H&hbc SHOPPE ORDER
+📋 Order #: ${order.order_number}
 
 👤 Customer: ${customerName}
 📞 Contact: ${contactNumber}
@@ -59,6 +198,7 @@ ${shippingAddress.city}, ${shippingAddress.province} ${shippingAddress.postalCod
 ${shippingAddress.country}
 
 📦 Shipping Method: ${shippingMethod.replace('lbc-', '').toUpperCase()}
+${appliedVoucher ? `🏷️ Voucher: ${appliedVoucher.code} (-₱${voucherDiscount.toFixed(2)})` : ''}
 
 📋 ORDER DETAILS:
 ${cartItems.map(item => {
@@ -86,14 +226,23 @@ ${cartItems.map(item => {
 
 ${notes ? `📝 Notes: ${notes}` : ''}
 
+✅ Order saved to database with ID: ${order.id}
 Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄✨
-    `.trim();
+      `.trim();
 
-    const encodedMessage = encodeURIComponent(orderDetails);
-    const messengerUrl = `https://m.me/100082987099531?text=${encodedMessage}`;
-    
-    window.open(messengerUrl, '_blank');
-    
+      const encodedMessage = encodeURIComponent(orderDetails);
+      const messengerUrl = `https://m.me/hhbcshoppe?text=${encodedMessage}`;
+      
+      // Show success message
+      alert(`Order #${order.order_number} created successfully! Redirecting to Messenger...`);
+      
+      // Open Messenger
+      window.open(messengerUrl, '_blank');
+      
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert(`Failed to create order: ${error instanceof Error ? error.message : 'Please try again.'}`);
+    }
   };
 
   const isDetailsValid = customerName && contactNumber && 
@@ -186,13 +335,19 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                 <span>Subtotal:</span>
                 <span>₱{totalPrice}</span>
               </div>
+              {voucherDiscount > 0 && (
+                <div className="flex items-center justify-between text-lg text-green-600">
+                  <span>Voucher Discount ({appliedVoucher?.code}):</span>
+                  <span>-₱{voucherDiscount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-lg">
                 <span>Shipping:</span>
                 <span>₱{shippingFee}</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black border-t border-pink-200 pt-2">
                 <span>Total:</span>
-                <span>₱{totalPrice + shippingFee}</span>
+                <span>₱{(totalPrice + shippingFee - voucherDiscount).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -227,6 +382,77 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                 />
               </div>
 
+              {/* Voucher Code */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">Voucher Code</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) => {
+                      setVoucherCode(e.target.value.toUpperCase());
+                      // Clear messages when user starts typing
+                      if (voucherError || voucherSuccess) {
+                        setVoucherError('');
+                        setVoucherSuccess('');
+                      }
+                    }}
+                    className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200 ${
+                      voucherError 
+                        ? 'border-red-300 bg-red-50' 
+                        : voucherSuccess 
+                        ? 'border-green-300 bg-green-50' 
+                        : 'border-gray-300'
+                    }`}
+                    placeholder="Enter voucher code"
+                    disabled={!!appliedVoucher}
+                  />
+                  {!appliedVoucher ? (
+                    <button
+                      type="button"
+                      onClick={applyVoucher}
+                      className="px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors duration-200 flex items-center space-x-2"
+                    >
+                      <Tag className="h-4 w-4" />
+                      <span>Apply</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={removeVoucher}
+                      className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-2"
+                    >
+                      <X className="h-4 w-4" />
+                      <span>Remove</span>
+                    </button>
+                  )}
+                </div>
+                {voucherError && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium">{voucherError}</p>
+                  </div>
+                )}
+                {voucherSuccess && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">{voucherSuccess}</p>
+                  </div>
+                )}
+                {appliedVoucher && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 font-medium">
+                      🎉 Voucher "{appliedVoucher.code}" is active!
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      You're saving ₱{voucherDiscount.toFixed(2)} on this order
+                    </p>
+                    {appliedVoucher.maxUses && (
+                      <p className="text-xs text-blue-500 mt-1">
+                        Usage: {appliedVoucher.usedCount}/{appliedVoucher.maxUses}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Shipping Method */}
               <div>
@@ -516,21 +742,32 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               <span>Subtotal:</span>
               <span>₱{totalPrice}</span>
             </div>
+            {voucherDiscount > 0 && (
+              <div className="flex items-center justify-between text-lg text-green-600">
+                <span>Voucher Discount ({appliedVoucher?.code}):</span>
+                <span>-₱{voucherDiscount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-lg">
               <span>Shipping:</span>
               <span>₱{shippingFee}</span>
             </div>
             <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black border-t border-pink-200 pt-2">
               <span>Total:</span>
-              <span>₱{totalPrice + shippingFee}</span>
+              <span>₱{(totalPrice + shippingFee - voucherDiscount).toFixed(2)}</span>
             </div>
           </div>
 
           <button
             onClick={handlePlaceOrder}
-            className="w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform bg-red-600 text-white hover:bg-red-700 hover:scale-[1.02]"
+            disabled={orderLoading}
+            className={`w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform ${
+              orderLoading 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-red-600 text-white hover:bg-red-700 hover:scale-[1.02]'
+            }`}
           >
-            Place Order via Messenger
+            {orderLoading ? 'Creating Order...' : 'Place Order via Messenger'}
           </button>
           
           <p className="text-xs text-gray-500 text-center mt-3">

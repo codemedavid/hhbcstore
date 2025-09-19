@@ -18,7 +18,8 @@ const AdminDashboard: React.FC = () => {
   const { menuItems, loading, addMenuItem, updateMenuItem, deleteMenuItem, refreshMenuItems } = useMenu();
   const { categories, allCategories } = useCategories();
   
-  const [currentView, setCurrentView] = useState<'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments' | 'vouchers'>('dashboard');
+  
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,6 +43,21 @@ const AdminDashboard: React.FC = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [uploadingImages, setUploadingImages] = useState(false);
+  
+  // Voucher states
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [voucherForm, setVoucherForm] = useState({
+    code: '',
+    discountType: 'percentage', // 'percentage' or 'fixed'
+    discountValue: 0,
+    minOrderAmount: 0,
+    maxUses: undefined as number | undefined,
+    usedCount: 0,
+    isActive: true,
+    expiresAt: ''
+  });
+  const [editingVoucher, setEditingVoucher] = useState<any>(null);
+
 
   // Debug categories loading
   React.useEffect(() => {
@@ -108,6 +124,183 @@ const AdminDashboard: React.FC = () => {
       }
     }
   };
+
+  // Voucher functions
+  const fetchVouchers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vouchers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Convert snake_case to camelCase for frontend
+      const formattedVouchers = (data || []).map(voucher => ({
+        id: voucher.id,
+        code: voucher.code,
+        discountType: voucher.discount_type,
+        discountValue: voucher.discount_value,
+        minOrderAmount: voucher.min_order_amount,
+        maxUses: voucher.max_uses,
+        usedCount: voucher.used_count,
+        isActive: voucher.is_active,
+        expiresAt: voucher.expires_at,
+        createdAt: voucher.created_at,
+        updatedAt: voucher.updated_at
+      }));
+      
+      setVouchers(formattedVouchers);
+    } catch (error) {
+      console.error('Error fetching vouchers:', error);
+    }
+  };
+
+  const handleAddVoucher = () => {
+    setEditingVoucher(null);
+    setVoucherForm({
+      code: '',
+      discountType: 'percentage',
+      discountValue: 0,
+      minOrderAmount: 0,
+      maxUses: undefined,
+      usedCount: 0,
+      isActive: true,
+      expiresAt: ''
+    });
+    setCurrentView('vouchers');
+  };
+
+  const handleSaveVoucher = async () => {
+    if (!voucherForm.code || voucherForm.discountValue <= 0) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      
+      // Convert camelCase to snake_case for database
+      const dbVoucherData = {
+        code: voucherForm.code,
+        discount_type: voucherForm.discountType,
+        discount_value: voucherForm.discountValue,
+        min_order_amount: voucherForm.minOrderAmount,
+        max_uses: voucherForm.maxUses,
+        used_count: voucherForm.usedCount,
+        is_active: voucherForm.isActive,
+        expires_at: voucherForm.expiresAt ? new Date(voucherForm.expiresAt).toISOString() : null
+      };
+      
+      console.log('Saving voucher:', dbVoucherData);
+      
+      if (editingVoucher) {
+        const { data, error } = await supabase
+          .from('vouchers')
+          .update(dbVoucherData)
+          .eq('id', editingVoucher.id)
+          .select();
+        
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
+        console.log('Updated voucher:', data);
+      } else {
+        const { data, error } = await supabase
+          .from('vouchers')
+          .insert([dbVoucherData])
+          .select();
+        
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        console.log('Created voucher:', data);
+      }
+      
+      await fetchVouchers();
+      setCurrentView('dashboard');
+      alert('Voucher saved successfully!');
+    } catch (error) {
+      console.error('Error saving voucher:', error);
+      alert(`Failed to save voucher: ${error instanceof Error ? error.message : 'Please try again.'}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleEditVoucher = (voucher: any) => {
+    setEditingVoucher(voucher);
+    setVoucherForm({
+      code: voucher.code,
+      discountType: voucher.discountType,
+      discountValue: voucher.discountValue,
+      minOrderAmount: voucher.minOrderAmount,
+      maxUses: voucher.maxUses,
+      usedCount: voucher.usedCount,
+      isActive: voucher.isActive,
+      expiresAt: voucher.expiresAt
+    });
+    setCurrentView('vouchers');
+  };
+
+  const handleDeleteVoucher = async (id: string) => {
+    if (confirm('Are you sure you want to delete this voucher? This action cannot be undone.')) {
+      try {
+        setIsProcessing(true);
+        
+        // First check if the voucher has been used in any orders
+        const { data: orders, error: checkError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('voucher_id', id)
+          .limit(1);
+        
+        if (checkError) {
+          console.error('Error checking voucher usage:', checkError);
+          throw new Error('Failed to check voucher usage');
+        }
+        
+        if (orders && orders.length > 0) {
+          // Voucher has been used, offer to deactivate instead
+          const deactivate = confirm(
+            'This voucher has been used in orders and cannot be deleted. Would you like to deactivate it instead?'
+          );
+          
+          if (deactivate) {
+            const { error: updateError } = await supabase
+              .from('vouchers')
+              .update({ is_active: false })
+              .eq('id', id);
+            
+            if (updateError) throw updateError;
+            alert('Voucher has been deactivated successfully.');
+          } else {
+            return; // User chose not to deactivate
+          }
+        } else {
+          // Voucher hasn't been used, safe to delete
+          const { error } = await supabase
+            .from('vouchers')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
+          alert('Voucher deleted successfully.');
+        }
+        
+        await fetchVouchers();
+      } catch (error) {
+        console.error('Error deleting voucher:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to delete voucher. Please try again.';
+        alert(errorMessage);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -277,6 +470,13 @@ const AdminDashboard: React.FC = () => {
   React.useEffect(() => {
     setShowBulkActions(selectedItems.length > 0);
   }, [selectedItems]);
+
+  // Fetch vouchers on mount
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      fetchVouchers();
+    }
+  }, [isAuthenticated]);
 
   const addVariation = () => {
     const newVariation: Variation = {
@@ -1304,6 +1504,244 @@ const AdminDashboard: React.FC = () => {
     return <PaymentMethodManager onBack={() => setCurrentView('dashboard')} />;
   }
 
+  // Voucher Management View
+  if (currentView === 'vouchers') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                >
+                  <ArrowLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <h1 className="text-2xl font-noto font-semibold text-black">
+                  {editingVoucher ? 'Edit Voucher' : 'Create Voucher'}
+                </h1>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveVoucher(); }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Voucher Code *</label>
+                  <input
+                    type="text"
+                    value={voucherForm.code}
+                    onChange={(e) => setVoucherForm({...voucherForm, code: e.target.value.toUpperCase()})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                    placeholder="SAVE20"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Discount Type *</label>
+                  <select
+                    value={voucherForm.discountType}
+                    onChange={(e) => setVoucherForm({...voucherForm, discountType: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (₱)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Discount Value *</label>
+                  <input
+                    type="number"
+                    value={voucherForm.discountValue}
+                    onChange={(e) => setVoucherForm({...voucherForm, discountValue: parseFloat(e.target.value) || 0})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                    placeholder={voucherForm.discountType === 'percentage' ? '20' : '100'}
+                    min="0"
+                    step="any"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Minimum Order Amount</label>
+                  <input
+                    type="number"
+                    value={voucherForm.minOrderAmount}
+                    onChange={(e) => setVoucherForm({...voucherForm, minOrderAmount: parseFloat(e.target.value) || 0})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                    placeholder="0"
+                    min="0"
+                    step="any"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Maximum Uses</label>
+                  <input
+                    type="number"
+                    value={voucherForm.maxUses || ''}
+                    onChange={(e) => setVoucherForm({...voucherForm, maxUses: e.target.value ? parseInt(e.target.value) : undefined})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                    placeholder="Unlimited"
+                    min="1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Expiry Date</label>
+                  <input
+                    type="datetime-local"
+                    value={voucherForm.expiresAt}
+                    onChange={(e) => setVoucherForm({...voucherForm, expiresAt: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 mt-6">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={voucherForm.isActive}
+                    onChange={(e) => setVoucherForm({...voucherForm, isActive: e.target.checked})}
+                    className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Active</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-4 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('dashboard')}
+                  className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50 transition-colors duration-200 flex items-center space-x-2"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>{editingVoucher ? 'Update Voucher' : 'Create Voucher'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Vouchers List */}
+          <div className="mt-8 bg-white rounded-xl shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-lg font-playfair font-medium text-black">All Vouchers</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Order</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uses</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {vouchers.map((voucher) => (
+                    <tr key={voucher.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {voucher.code}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {voucher.discountType === 'percentage' 
+                          ? `${voucher.discountValue}%` 
+                          : `₱${voucher.discountValue}`
+                        }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ₱{voucher.minOrderAmount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {voucher.maxUses ? (
+                          <span className={`${voucher.usedCount >= voucher.maxUses ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                            {voucher.usedCount}/{voucher.maxUses}
+                            {voucher.usedCount >= voucher.maxUses && ' (FULL)'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">{voucher.usedCount}/∞</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col space-y-1">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            voucher.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {voucher.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                          {voucher.usedCount > 0 && (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                              Used {voucher.usedCount} times
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditVoucher(voucher)}
+                            className="text-pink-600 hover:text-pink-900"
+                            title="Edit voucher"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVoucher(voucher.id)}
+                            className={`${
+                              voucher.usedCount > 0 
+                                ? 'text-orange-600 hover:text-orange-900' 
+                                : 'text-red-600 hover:text-red-900'
+                            }`}
+                            title={
+                              voucher.usedCount > 0 
+                                ? 'This voucher has been used and will be deactivated instead of deleted'
+                                : 'Delete this voucher'
+                            }
+                          >
+                            {voucher.usedCount > 0 ? (
+                              <X className="h-4 w-4" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Dashboard View
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1429,6 +1867,169 @@ const AdminDashboard: React.FC = () => {
               >
                 <CreditCard className="h-5 w-5 text-gray-400" />
                 <span className="font-medium text-gray-900">Payment Methods</span>
+              </button>
+              <button
+                onClick={handleAddVoucher}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              >
+                <Plus className="h-5 w-5 text-gray-400" />
+                <span className="font-medium text-gray-900">Create Voucher</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-playfair font-medium text-black mb-4">Categories Overview</h3>
+            <div className="space-y-3">
+              {categoryCounts.map((category) => (
+                <div key={category.id} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">{category.icon}</span>
+                    <span className="font-medium text-gray-900">{category.name}</span>
+                  </div>
+                  <span className="text-sm text-gray-500">{category.count} items</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+
+
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-8 h-8 rounded-soft object-cover" />
+              <h1 className="text-2xl font-semibold text-black">
+                <span className="text-blue-400">H</span>
+                <span className="text-gray-600">&</span>
+                <span className="text-pink-500">hbc</span>
+                <span className="text-gray-600"> SHOPPE</span>
+                <span className="text-gray-500 text-lg"> Admin</span>
+              </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={refreshMenuItems}
+                className="text-gray-600 hover:text-black transition-colors duration-200"
+                title="Refresh data from database"
+              >
+                🔄 Refresh
+              </button>
+              <a
+                href="/"
+                className="text-gray-600 hover:text-black transition-colors duration-200"
+              >
+                View Website
+              </a>
+              <button
+                onClick={handleLogout}
+                className="text-gray-600 hover:text-black transition-colors duration-200"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Package className="h-8 w-8 text-pink-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Items</p>
+                <p className="text-2xl font-semibold text-gray-900">{menuItems.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <TrendingUp className="h-8 w-8 text-green-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Popular Items</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {menuItems.filter(item => item.popular).length}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Users className="h-8 w-8 text-blue-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Categories</p>
+                <p className="text-2xl font-semibold text-gray-900">{categories.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <CreditCard className="h-8 w-8 text-purple-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Vouchers</p>
+                <p className="text-2xl font-semibold text-gray-900">{vouchers.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-playfair font-medium text-black mb-4">Quick Actions</h3>
+            <div className="space-y-3">
+              <button
+                onClick={handleAddItem}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              >
+                <Plus className="h-5 w-5 text-gray-400" />
+                <span className="font-medium text-gray-900">Add Item</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('items')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              >
+                <Package className="h-5 w-5 text-gray-400" />
+                <span className="font-medium text-gray-900">Manage Items</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('categories')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              >
+                <FolderOpen className="h-5 w-5 text-gray-400" />
+                <span className="font-medium text-gray-900">Manage Categories</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('payments')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              >
+                <CreditCard className="h-5 w-5 text-gray-400" />
+                <span className="font-medium text-gray-900">Payment Methods</span>
+              </button>
+              <button
+                onClick={handleAddVoucher}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              >
+                <Plus className="h-5 w-5 text-gray-400" />
+                <span className="font-medium text-gray-900">Create Voucher</span>
               </button>
             </div>
           </div>

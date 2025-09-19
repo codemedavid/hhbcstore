@@ -8,6 +8,7 @@ import Cart from './components/Cart';
 import Checkout from './components/Checkout';
 import FloatingCartButton from './components/FloatingCartButton';
 import AdminDashboard from './components/AdminDashboard';
+import TestOrdersPage from './pages/TestOrdersPage';
 import Toast from './components/Toast';
 import { useProducts } from './hooks/useProducts';
 
@@ -42,8 +43,8 @@ function MainApp() {
     setToast(prev => ({ ...prev, isVisible: false }));
   };
 
-  const handleAddToCart = (item: any, quantity: number, variation?: any, addOns?: any[]) => {
-    const success = cart.addToCart(item, quantity, variation, addOns);
+  const handleAddToCart = (item: any) => {
+    const success = cart.addToCart(item, 1);
     if (success) {
       showToast(`${item.name} added to cart!`, 'success');
     }
@@ -116,6 +117,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainApp />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/test-orders" element={<TestOrdersPage />} />
       </Routes>
     </Router>
   );
