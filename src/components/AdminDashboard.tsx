@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp, Package, Users, Lock, FolderOpen, CreditCard } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ArrowLeft, TrendingUp, Package, Users, FolderOpen, CreditCard, Upload } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
-import { useCategories, Category } from '../hooks/useCategories';
+import { useCategories } from '../hooks/useCategories';
+import { supabase } from '../lib/supabase';
 import ImageUpload from './ImageUpload';
 import CategoryManager from './CategoryManager';
 import PaymentMethodManager from './PaymentMethodManager';
@@ -14,8 +15,9 @@ const AdminDashboard: React.FC = () => {
   });
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const { menuItems, loading, addMenuItem, updateMenuItem, deleteMenuItem } = useMenu();
-  const { categories } = useCategories();
+  const { menuItems, loading, addMenuItem, updateMenuItem, deleteMenuItem, refreshMenuItems } = useMenu();
+  const { categories, allCategories } = useCategories();
+  
   const [currentView, setCurrentView] = useState<'dashboard' | 'items' | 'add' | 'edit' | 'categories' | 'payments'>('dashboard');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -24,27 +26,68 @@ const AdminDashboard: React.FC = () => {
   const [formData, setFormData] = useState<Partial<MenuItem>>({
     name: '',
     description: '',
-    basePrice: 0,
-    category: 'hot-coffee',
+    basePrice: undefined,
+    discountedPrice: undefined,
+    category: 'hair-care',
+    subcategory: undefined,
     popular: false,
     available: true,
     variations: [],
-    addOns: []
+    addOns: [],
+    stock: 0,
+    sku: '',
+    brand: '',
+    weight: '',
+    ingredients: []
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Debug categories loading
+  React.useEffect(() => {
+    console.log('Categories loaded:', categories.length, 'categories');
+    console.log('All categories (flat):', allCategories.length, 'categories');
+    console.log('Categories with parent_id:', allCategories.filter(cat => cat.parent_id).length, 'subcategories');
+    console.log('All categories details:', allCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      parent_id: cat.parent_id
+    })));
+  }, [categories, allCategories]);
+
+  // Debug form data changes
+  React.useEffect(() => {
+    console.log('Form data changed:', formData);
+  }, [formData]);
+
 
   const handleAddItem = () => {
     setCurrentView('add');
-    const defaultCategory = categories.length > 0 ? categories[0].id : 'dim-sum';
+    // Get the first main category (without parent_id)
+    const mainCategories = allCategories.filter(cat => !cat.parent_id);
+    const defaultCategory = mainCategories.length > 0 ? mainCategories[0].id as 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care' : 'hair-care';
+    
+    console.log('Setting up new item with category:', defaultCategory);
+    console.log('Available main categories:', mainCategories);
+    
     setFormData({
       name: '',
       description: '',
-      basePrice: 0,
+      basePrice: undefined,
+      discountedPrice: undefined,
       category: defaultCategory,
+      subcategory: undefined,
       popular: false,
       available: true,
       variations: [],
-      addOns: []
+      addOns: [],
+      stock: 0,
+      sku: '',
+      brand: '',
+      weight: '',
+      ingredients: []
     });
+    setFormErrors({});
   };
 
   const handleEditItem = (item: MenuItem) => {
@@ -66,13 +109,70 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    console.log('Validating form with data:', formData);
+
+    if (!formData.name?.trim()) {
+      errors.name = 'Product name is required';
+    } else if (formData.name.length < 3) {
+      errors.name = 'Product name must be at least 3 characters';
+    }
+
+    if (!formData.description?.trim()) {
+      errors.description = 'Product description is required';
+    } else if (formData.description.length < 5) {
+      errors.description = 'Product description must be at least 5 characters';
+    }
+
+    if (!formData.basePrice || formData.basePrice <= 0) {
+      errors.basePrice = 'Base price must be greater than 0';
+    }
+
+    if (formData.discountedPrice && formData.discountedPrice >= formData.basePrice!) {
+      errors.discountedPrice = 'Discounted price must be less than base price';
+    }
+
+    if (!formData.category) {
+      errors.category = 'Category is required';
+    }
+
+    if (!formData.subcategory) {
+      errors.subcategory = 'Subcategory is required';
+    }
+
+    if (formData.stock !== undefined && formData.stock < 0) {
+      errors.stock = 'Stock quantity cannot be negative';
+    }
+
+    if (formData.sku && formData.sku.trim() && !/^[A-Z0-9-]+$/.test(formData.sku)) {
+      errors.sku = 'SKU must contain only uppercase letters, numbers, and hyphens';
+    }
+
+    if (formData.weight && formData.weight.trim() && !/^\d+(\.\d+)?\s*(g|ml|oz|lb)$/i.test(formData.weight)) {
+      errors.weight = 'Weight must be in format like "100g", "250ml", "1.5oz"';
+    }
+
+    console.log('Validation errors:', errors);
+    setFormErrors(errors);
+    const isValid = Object.keys(errors).length === 0;
+    console.log('Form is valid:', isValid);
+    return isValid;
+  };
+
   const handleSaveItem = async () => {
-    if (!formData.name || !formData.description || !formData.basePrice) {
-      alert('Please fill in all required fields');
+    console.log('Form data before validation:', formData);
+    console.log('Form errors before validation:', formErrors);
+    
+    if (!validateForm()) {
+      console.log('Validation failed, errors:', formErrors);
       return;
     }
 
     try {
+      setIsProcessing(true);
+      console.log('Saving item with data:', formData);
+      
       if (editingItem) {
         await updateMenuItem(editingItem.id, formData);
       } else {
@@ -80,8 +180,13 @@ const AdminDashboard: React.FC = () => {
       }
       setCurrentView('items');
       setEditingItem(null);
+      setFormErrors({});
+      console.log('Item saved successfully');
     } catch (error) {
-      alert('Failed to save item');
+      console.error('Save error:', error);
+      alert('Failed to save item: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -136,7 +241,7 @@ const AdminDashboard: React.FC = () => {
         for (const itemId of selectedItems) {
           const item = menuItems.find(i => i.id === itemId);
           if (item) {
-            await updateMenuItem(itemId, { ...item, category: newCategoryId });
+            await updateMenuItem(itemId, { ...item, category: newCategoryId as 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care' });
           }
         }
         setSelectedItems([]);
@@ -177,7 +282,11 @@ const AdminDashboard: React.FC = () => {
     const newVariation: Variation = {
       id: `var-${Date.now()}`,
       name: '',
-      price: 0
+      price: 0,
+      images: [],
+      image_url: '',
+      sku: '',
+      stock: 0
     };
     setFormData({
       ...formData,
@@ -193,6 +302,67 @@ const AdminDashboard: React.FC = () => {
 
   const removeVariation = (index: number) => {
     const updatedVariations = formData.variations?.filter((_, i) => i !== index) || [];
+    setFormData({ ...formData, variations: updatedVariations });
+  };
+
+  const addVariationImage = async (variationIndex: number, file: File) => {
+    try {
+      console.log('Starting image upload for variation', variationIndex, 'file:', file.name);
+      setUploadingImages(true);
+      
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(`variations/${Date.now()}-${file.name}`, file);
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
+
+      console.log('Upload successful, data:', data);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(data.path);
+
+      console.log('Public URL:', publicUrl);
+
+      const updatedVariations = [...(formData.variations || [])];
+      updatedVariations[variationIndex] = {
+        ...updatedVariations[variationIndex],
+        images: [...(updatedVariations[variationIndex].images || []), publicUrl]
+      };
+      
+      console.log('Updated variations:', updatedVariations);
+      setFormData({ ...formData, variations: updatedVariations });
+      console.log('Image added successfully');
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      alert('Failed to upload image: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeVariationImage = (variationIndex: number, imageIndex: number) => {
+    const updatedVariations = [...(formData.variations || [])];
+    updatedVariations[variationIndex] = {
+      ...updatedVariations[variationIndex],
+      images: updatedVariations[variationIndex].images?.filter((_, i) => i !== imageIndex) || []
+    };
+    setFormData({ ...formData, variations: updatedVariations });
+  };
+
+  const reorderVariationImages = (variationIndex: number, fromIndex: number, toIndex: number) => {
+    const updatedVariations = [...(formData.variations || [])];
+    const images = [...(updatedVariations[variationIndex].images || [])];
+    const [movedImage] = images.splice(fromIndex, 1);
+    images.splice(toIndex, 0, movedImage);
+    
+    updatedVariations[variationIndex] = {
+      ...updatedVariations[variationIndex],
+      images
+    };
     setFormData({ ...formData, variations: updatedVariations });
   };
 
@@ -231,7 +401,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'NomSum@Admin!2025') {
+    if (password === 'hhbcAdmin!2025') {
       setIsAuthenticated(true);
       localStorage.setItem('beracah_admin_auth', 'true');
       setLoginError('');
@@ -254,9 +424,9 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
-              <Lock className="h-8 w-8 text-white" />
+              <img src="/logo.jpg" alt="H&HBC Logo" className="w-12 h-12 rounded-full object-cover" />
             </div>
-            <h1 className="text-2xl font-playfair font-semibold text-black">Admin Access</h1>
+            <h1 className="text-2xl font-playfair font-semibold text-black">H&hbc Admin Access</h1>
             <p className="text-gray-600 mt-2">Enter password to access the admin dashboard</p>
           </div>
           
@@ -315,7 +485,7 @@ const AdminDashboard: React.FC = () => {
                   <span>Back</span>
                 </button>
                 <h1 className="text-2xl font-playfair font-semibold text-black">
-                  {currentView === 'add' ? 'Add New Item' : 'Edit Item'}
+                  {currentView === 'add' ? 'Add Item' : 'Edit Item'}
                 </h1>
               </div>
               <div className="flex space-x-3">
@@ -328,10 +498,11 @@ const AdminDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSaveItem}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
+                  disabled={isProcessing}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="h-4 w-4" />
-                  <span>Save</span>
+                  <span>{isProcessing ? 'Saving...' : 'Save'}</span>
                 </button>
               </div>
             </div>
@@ -342,14 +513,19 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Item Name *</label>
+                <label className="block text-sm font-medium text-black mb-2">Product Name *</label>
                 <input
                   type="text"
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                  placeholder="Enter item name"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                    formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'
+                  }`}
+                  placeholder="Enter product name"
                 />
+                {formErrors.name && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -357,23 +533,99 @@ const AdminDashboard: React.FC = () => {
                 <input
                   type="number"
                   value={formData.basePrice || ''}
-                  onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                  placeholder="0"
+                  onChange={(e) => setFormData({ ...formData, basePrice: e.target.value ? Number(e.target.value) : undefined })}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                    formErrors.basePrice ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'
+                  }`}
+                  placeholder="Enter price"
+                  step="0.01"
+                  min="0"
                 />
+                {formErrors.basePrice && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.basePrice}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">Discounted Price</label>
+                <input
+                  type="number"
+                  value={formData.discountedPrice || ''}
+                  onChange={(e) => setFormData({ ...formData, discountedPrice: Number(e.target.value) || undefined })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  placeholder="Leave empty for no discount"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional: Enter a discounted price to show a sale price
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-black mb-2">Category *</label>
                 <select
                   value={formData.category || ''}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => {
+                    const selectedCategory = e.target.value as 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+                    console.log('Category changed to:', selectedCategory);
+                    setFormData({ 
+                      ...formData, 
+                      category: selectedCategory,
+                      subcategory: undefined // Reset subcategory when category changes
+                    });
+                  }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
                 >
-                  {categories.map(cat => (
+                  {allCategories.filter(cat => !cat.parent_id).map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Subcategory *
+                </label>
+                <select
+                  value={formData.subcategory || ''}
+                  onChange={(e) => {
+                    console.log('Subcategory changed to:', e.target.value);
+                    setFormData({ ...formData, subcategory: e.target.value || undefined });
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                    formErrors.subcategory ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'
+                  }`}
+                  disabled={!formData.category}
+                >
+                  <option value="">Select a subcategory</option>
+                  {formData.category && (() => {
+                    const subcategories = allCategories.filter(cat => cat.parent_id === formData.category);
+                    console.log('Selected category:', formData.category);
+                    console.log('All categories for filtering:', allCategories);
+                    console.log('Filtered subcategories:', subcategories);
+                    console.log('Rendering subcategory options...');
+                    
+                    if (subcategories.length === 0) {
+                      console.log('No subcategories found for category:', formData.category);
+                      return <option value="" disabled>No subcategories available</option>;
+                    }
+                    
+                    const options = subcategories.map(cat => {
+                      console.log('Creating option for:', cat.name, 'with id:', cat.id);
+                      return <option key={cat.id} value={cat.id}>{cat.name}</option>;
+                    });
+                    
+                    console.log('Rendered options:', options.length);
+                    return options;
+                  })()}
+                  {/* Test option to see if dropdown is working */}
+                  <option value="test" style={{color: 'red'}}>TEST OPTION</option>
+                </select>
+                {formErrors.subcategory && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.subcategory}</p>
+                )}
+                <p className="text-sm text-gray-500 mt-1">
+                  Choose a specific subcategory within the selected category
+                </p>
               </div>
 
               <div className="flex items-center">
@@ -399,6 +651,82 @@ const AdminDashboard: React.FC = () => {
                   <span className="text-sm font-medium text-black">Available for Order</span>
                 </label>
               </div>
+
+              {/* Additional Product Fields */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Brand <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.brand || ''}
+                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  placeholder="Enter brand name"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  The brand or manufacturer of this product
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  SKU (Stock Keeping Unit) <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.sku || ''}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                    formErrors.sku ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'
+                  }`}
+                  placeholder="e.g., HAIR-001, LIP-123"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  SKU is a unique identifier for your product (letters, numbers, and hyphens only)
+                </p>
+                {formErrors.sku && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.sku}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Weight <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.weight || ''}
+                  onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                    formErrors.weight ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'
+                  }`}
+                  placeholder="e.g., 100g, 250ml, 1.5oz"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Product weight or volume (e.g., 100g, 250ml, 1.5oz)
+                </p>
+                {formErrors.weight && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.weight}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">Stock Quantity</label>
+                <input
+                  type="number"
+                  value={formData.stock || ''}
+                  onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                    formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'
+                  }`}
+                  placeholder="0"
+                  min="0"
+                />
+                {formErrors.stock && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.stock}</p>
+                )}
+              </div>
             </div>
 
             <div className="mb-8">
@@ -414,8 +742,8 @@ const AdminDashboard: React.FC = () => {
 
             <div className="mb-8">
               <ImageUpload
-                currentImage={formData.image}
-                onImageChange={(imageUrl) => setFormData({ ...formData, image: imageUrl })}
+                currentImage={formData.images?.[0] || ''}
+                onImageChange={(imageUrl) => setFormData({ ...formData, images: imageUrl ? [imageUrl] : [] })}
               />
             </div>
 
@@ -433,27 +761,139 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {formData.variations?.map((variation, index) => (
-                <div key={variation.id} className="flex items-center space-x-3 mb-3 p-4 bg-gray-50 rounded-lg">
-                  <input
-                    type="text"
-                    value={variation.name}
-                    onChange={(e) => updateVariation(index, 'name', e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Variation name (e.g., Small, Medium, Large)"
-                  />
-                  <input
-                    type="number"
-                    value={variation.price}
-                    onChange={(e) => updateVariation(index, 'price', Number(e.target.value))}
-                    className="w-24 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Price"
-                  />
-                  <button
-                    onClick={() => removeVariation(index)}
-                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                <div key={variation.id} className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <input
+                      type="text"
+                      value={variation.name}
+                      onChange={(e) => updateVariation(index, 'name', e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Variation name (e.g., Small, Medium, Large)"
+                    />
+                    <input
+                      type="number"
+                      value={variation.price}
+                      onChange={(e) => updateVariation(index, 'price', Number(e.target.value))}
+                      className="w-24 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Price"
+                    />
+                    <button
+                      onClick={() => removeVariation(index)}
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  {/* Variation Images Upload */}
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Variation Images (Multiple)
+                    </label>
+                    
+                    {/* Multiple Images Display */}
+                    {variation.images && variation.images.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                        {variation.images.map((image, imgIndex) => (
+                          <div key={imgIndex} className="relative group">
+                            <img
+                              src={image}
+                              alt={`${variation.name} image ${imgIndex + 1}`}
+                              className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-1">
+                              <button
+                                onClick={() => removeVariationImage(index, imgIndex)}
+                                className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                title="Remove image"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (imgIndex > 0) {
+                                    reorderVariationImages(index, imgIndex, imgIndex - 1);
+                                  }
+                                }}
+                                disabled={imgIndex === 0}
+                                className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                                title="Move left"
+                              >
+                                ←
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (imgIndex < variation.images!.length - 1) {
+                                    reorderVariationImages(index, imgIndex, imgIndex + 1);
+                                  }
+                                }}
+                                disabled={imgIndex === variation.images!.length - 1}
+                                className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                                title="Move right"
+                              >
+                                →
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Image Upload */}
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          console.log('Files selected:', files);
+                          
+                          for (const file of files) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('Image size must be less than 5MB');
+                              continue;
+                            }
+                            
+                            // Validate file type
+                            if (!file.type.startsWith('image/')) {
+                              alert('Please select only image files');
+                              continue;
+                            }
+                            
+                            console.log('Uploading file:', file.name);
+                            await addVariationImage(index, file);
+                          }
+                          
+                          // Reset file input
+                          e.target.value = '';
+                        }}
+                        className="hidden"
+                        id={`variation-images-${index}`}
+                      />
+                      <label
+                        htmlFor={`variation-images-${index}`}
+                        className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer transition-colors"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>Upload Multiple Images</span>
+                      </label>
+                      {uploadingImages && (
+                        <span className="text-sm text-gray-500">Uploading...</span>
+                      )}
+                    </div>
+                    
+                    {/* Single Image for backward compatibility */}
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Primary Image (Single)
+                      </label>
+                      <ImageUpload
+                        onImageChange={(url) => updateVariation(index, 'image_url', url || '')}
+                        currentImage={variation.image_url || ''}
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -526,7 +966,7 @@ const AdminDashboard: React.FC = () => {
                   <ArrowLeft className="h-5 w-5" />
                   <span>Dashboard</span>
                 </button>
-                <h1 className="text-2xl font-playfair font-semibold text-black">Menu Items</h1>
+                <h1 className="text-2xl font-playfair font-semibold text-black">Items</h1>
               </div>
               <div className="flex items-center space-x-3">
                 {showBulkActions && (
@@ -547,7 +987,7 @@ const AdminDashboard: React.FC = () => {
                   className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Add New Item</span>
+                  <span>Add Item</span>
                 </button>
               </div>
             </div>
@@ -606,10 +1046,11 @@ const AdminDashboard: React.FC = () => {
                     <X className="h-4 w-4" />
                     <span>Clear Selection</span>
                   </button>
-                </div>
-              </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
+
 
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             {/* Bulk Actions Bar */}
@@ -656,7 +1097,7 @@ const AdminDashboard: React.FC = () => {
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Name</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Category</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Base Price</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Price</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Variations</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Add-ons</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Status</th>
@@ -681,9 +1122,27 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {categories.find(cat => cat.id === item.category)?.name}
+                        <div>
+                          <div className="font-medium">
+                            {allCategories.find(cat => cat.id === item.category)?.name}
+                          </div>
+                          {item.subcategory && (
+                            <div className="text-xs text-gray-400">
+                              {allCategories.find(cat => cat.id === item.subcategory)?.name}
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">₱{item.basePrice}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {item.discountedPrice ? (
+                          <div className="flex flex-col">
+                            <span className="text-green-600 font-bold">₱{item.discountedPrice}</span>
+                            <span className="text-gray-400 line-through text-xs">₱{item.basePrice}</span>
+                          </div>
+                        ) : (
+                          <span>₱{item.basePrice}</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {item.variations?.length || 0} variations
                       </td>
@@ -772,13 +1231,27 @@ const AdminDashboard: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Category:</span>
-                      <span className="ml-1 text-gray-900">
-                        {categories.find(cat => cat.id === item.category)?.name}
-                      </span>
+                      <div className="ml-1 text-gray-900">
+                        <div className="font-medium">
+                          {allCategories.find(cat => cat.id === item.category)?.name}
+                        </div>
+                        {item.subcategory && (
+                          <div className="text-xs text-gray-400">
+                            {allCategories.find(cat => cat.id === item.subcategory)?.name}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <span className="text-gray-500">Price:</span>
-                      <span className="ml-1 font-medium text-gray-900">₱{item.basePrice}</span>
+                      {item.discountedPrice ? (
+                        <div className="ml-1 flex flex-col">
+                          <span className="text-green-600 font-bold">₱{item.discountedPrice}</span>
+                          <span className="text-gray-400 line-through text-xs">₱{item.basePrice}</span>
+                        </div>
+                      ) : (
+                        <span className="ml-1 font-medium text-gray-900">₱{item.basePrice}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-gray-500">Variations:</span>
@@ -832,10 +1305,17 @@ const AdminDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <Coffee className="h-8 w-8 text-black" />
-              <h1 className="text-2xl font-noto font-semibold text-black">Nom Sum Admin</h1>
+              <img src="/logo.jpg" alt="H&HBC Logo" className="w-8 h-8 rounded-soft object-cover" />
+              <h1 className="text-2xl font-noto font-semibold text-black">H&hbc Admin</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={refreshMenuItems}
+                className="text-gray-600 hover:text-black transition-colors duration-200"
+                title="Refresh data from database"
+              >
+                🔄 Refresh
+              </button>
               <a
                 href="/"
                 className="text-gray-600 hover:text-black transition-colors duration-200"
@@ -883,7 +1363,7 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center">
               <div className="p-2 bg-cream-500 rounded-lg">
-                <Coffee className="h-6 w-6 text-white" />
+                <Package className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Popular Items</p>
@@ -915,14 +1395,14 @@ const AdminDashboard: React.FC = () => {
                 className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
               >
                 <Plus className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Add New Menu Item</span>
+                <span className="font-medium text-gray-900">Add Item</span>
               </button>
               <button
                 onClick={() => setCurrentView('items')}
                 className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
               >
                 <Package className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Manage Menu Items</span>
+                <span className="font-medium text-gray-900">Manage Items</span>
               </button>
               <button
                 onClick={() => setCurrentView('categories')}

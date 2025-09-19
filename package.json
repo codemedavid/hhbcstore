@@ -1,5 +1,5 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "h-hbc-beauty-ecommerce",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "insert-subcategories": "node insert-subcategories-simple.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
+    "dotenv": "^16.6.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

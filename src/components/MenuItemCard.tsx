@@ -22,9 +22,9 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   const [selectedAddOns, setSelectedAddOns] = useState<(AddOn & { quantity: number })[]>([]);
 
   const calculatePrice = () => {
-    let price = item.basePrice;
+    let price = item.discountedPrice || item.basePrice;
     if (selectedVariation) {
-      price = item.basePrice + selectedVariation.price;
+      price = (item.discountedPrice || item.basePrice) + selectedVariation.price;
     }
     selectedAddOns.forEach(addOn => {
       price += addOn.price * addOn.quantity;
@@ -136,12 +136,26 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           
           <div className="flex items-center justify-between mb-6">
             <div>
-              <span className="text-3xl font-bold text-black-800">
-                ₱{item.basePrice}
-                {item.variations && item.variations.length > 0 && (
-                  <span className="text-sm text-black-600 ml-2 font-normal">starting</span>
-                )}
-              </span>
+              {item.discountedPrice ? (
+                <div className="flex items-center space-x-3">
+                  <span className="text-3xl font-bold text-green-600">
+                    ₱{item.discountedPrice}
+                  </span>
+                  <span className="text-xl text-gray-400 line-through">
+                    ₱{item.basePrice}
+                  </span>
+                  {item.variations && item.variations.length > 0 && (
+                    <span className="text-sm text-black-600 font-normal">starting</span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-3xl font-bold text-black-800">
+                  ₱{item.basePrice}
+                  {item.variations && item.variations.length > 0 && (
+                    <span className="text-sm text-black-600 ml-2 font-normal">starting</span>
+                  )}
+                </span>
+              )}
               {item.variations && item.variations.length > 0 && (
                 <div className="text-xs text-black-600 mt-1 font-medium">
                   {item.variations.length} size{item.variations.length > 1 ? 's' : ''} available
@@ -224,10 +238,20 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
                             onChange={() => setSelectedVariation(variation)}
                             className="text-green-600 focus:ring-green-500"
                           />
-                          <span className="font-semibold text-black-900">{variation.name}</span>
+                          <div className="flex items-center space-x-3">
+                            {/* Variation Image */}
+                            {(variation.image_url || (variation.images && variation.images.length > 0)) && (
+                              <img
+                                src={variation.image_url || variation.images?.[0]}
+                                alt={variation.name}
+                                className="w-12 h-12 object-cover rounded-lg border border-gray-200"
+                              />
+                            )}
+                            <span className="font-semibold text-black-900">{variation.name}</span>
+                          </div>
                         </div>
                         <span className="text-green-600 font-bold text-lg">
-                          ₱{item.basePrice + variation.price}
+                          ₱{(item.discountedPrice || item.basePrice) + variation.price}
                         </span>
                       </label>
                     ))}

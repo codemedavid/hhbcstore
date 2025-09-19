@@ -24,17 +24,17 @@ const Cart: React.FC<CartProps> = ({
   if (cartItems.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="text-center py-16">
-        <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <span className="text-white font-bold text-3xl">M</span>
+      <div className="text-center py-20">
+        <div className="w-24 h-24 bg-gradient-to-br from-pink-200 to-pink-300 rounded-cute flex items-center justify-center mx-auto mb-8 shadow-floating">
+          <img src="/logo.jpg" alt="H&HBC Logo" className="w-16 h-16 rounded-soft object-cover" />
         </div>
-        <h2 className="text-3xl font-noto font-bold text-black-900 mb-3">Your cart is empty</h2>
-        <p className="text-brown-600 mb-8 text-lg">Add some delicious items to get started!</p>
+        <h2 className="text-4xl font-noto font-bold text-soft-800 mb-4">Your cart is empty ✨</h2>
+        <p className="text-soft-600 mb-10 text-xl">Add some beautiful products to get started! 💕</p>
         <button
           onClick={onContinueShopping}
-          className="bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-4 rounded-full hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-green-500/25"
+          className="bg-gradient-to-r from-pink-400 to-pink-500 text-white px-10 py-4 rounded-cute hover:from-pink-500 hover:to-pink-600 transition-all duration-300 font-bold text-lg shadow-floating hover:shadow-glow hover:scale-105"
         >
-          Browse Menu
+          🛍️ Browse Products
         </button>
       </div>
       </div>
@@ -43,20 +43,20 @@ const Cart: React.FC<CartProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-10">
         <button
           onClick={onContinueShopping}
-          className="flex items-center space-x-2 text-brown-600 hover:text-black-900 transition-colors duration-200 font-semibold"
+          className="flex items-center space-x-2 text-pink-600 hover:text-pink-700 transition-colors duration-200 font-semibold hover:scale-105"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>Continue Shopping</span>
         </button>
-        <h1 className="text-4xl font-noto font-bold text-black-900">Your Cart</h1>
+        <h1 className="text-5xl font-noto font-bold text-soft-800">🛍️ Your Cart</h1>
         <button
           onClick={clearCart}
-          className="text-brown-500 hover:text-red-600 transition-colors duration-200 font-semibold"
+          className="text-red-500 hover:text-red-600 transition-colors duration-200 font-semibold hover:scale-105"
         >
-          Clear All
+          🗑️ Clear All
         </button>
       </div>
 
@@ -78,7 +78,16 @@ const Cart: React.FC<CartProps> = ({
                     ).join(', ')}
                   </p>
                 )}
-                <p className="text-xl font-bold text-green-600">₱{item.totalPrice} each</p>
+                <p className="text-xl font-bold text-green-600">₱{Math.round(item.totalPrice / item.quantity)} each</p>
+                {/* Stock Information */}
+                <p className="text-xs text-soft-500 mt-1">
+                  📦 {item.stock ?? 0} available in stock
+                  {item.selectedVariation && item.stock !== item.selectedVariation.stock && (
+                    <span className="text-pink-500 ml-1">
+                      (variation: {item.selectedVariation.stock})
+                    </span>
+                  )}
+                </p>
               </div>
               
               <div className="flex items-center space-x-4 ml-4">
@@ -92,14 +101,25 @@ const Cart: React.FC<CartProps> = ({
                   <span className="font-semibold text-black min-w-[32px] text-center">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="p-2 hover:bg-green-200 rounded-full transition-colors duration-200 text-green-700"
+                    disabled={(() => {
+                      const availableStock = item.selectedVariation?.stock ?? item.stock ?? 0;
+                      return item.quantity >= availableStock;
+                    })()}
+                    className={`p-2 rounded-full transition-colors duration-200 ${
+                      (() => {
+                        const availableStock = item.selectedVariation?.stock ?? item.stock ?? 0;
+                        return item.quantity >= availableStock
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'hover:bg-green-200 text-green-700';
+                      })()
+                    }`}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
                 
                 <div className="text-right">
-                  <p className="text-xl font-bold text-green-600">₱{item.totalPrice * item.quantity}</p>
+                  <p className="text-xl font-bold text-green-600">₱{item.totalPrice}</p>
                 </div>
                 
                 <button
@@ -117,7 +137,7 @@ const Cart: React.FC<CartProps> = ({
       <div className="bg-gradient-to-r from-brown-50 to-green-50 rounded-2xl shadow-lg p-8 border border-brown-200">
         <div className="flex items-center justify-between text-3xl font-noto font-bold text-black-900 mb-8">
           <span>Total:</span>
-          <span className="text-green-600">₱{parseFloat(getTotalPrice() || 0).toFixed(2)}</span>
+          <span className="text-green-600">₱{getTotalPrice().toFixed(2)}</span>
         </div>
         
         <button

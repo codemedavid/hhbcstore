@@ -15,35 +15,71 @@ export const useMenu = () => {
       const { data: items, error: itemsError } = await supabase
         .from('menu_items')
         .select(`
-          *,
+          id,
+          name,
+          description,
+          base_price,
+          discounted_price,
+          category,
+          subcategory,
+          image_url,
+          popular,
+          available,
+          stock,
+          sku,
+          brand,
+          weight,
+          ingredients,
+          created_at,
+          updated_at,
           variations (*),
           add_ons (*)
         `)
         .order('created_at', { ascending: true });
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('❌ Database error:', itemsError);
+        throw itemsError;
+      }
+
 
       const formattedItems: MenuItem[] = items?.map(item => ({
         id: item.id,
         name: item.name,
         description: item.description,
         basePrice: item.base_price,
+        discountedPrice: item.discounted_price || undefined,
         category: item.category,
+        subcategory: item.subcategory || undefined,
+        images: item.image_url ? [item.image_url] : [],
         popular: item.popular,
         available: item.available ?? true,
-        image: item.image_url || undefined,
-        variations: item.variations?.map(v => ({
+        stock: (item.stock !== null && item.stock !== undefined) ? item.stock : 50,
+        sku: item.sku || undefined,
+        brand: item.brand || undefined,
+        weight: item.weight || undefined,
+        variations: item.variations?.map((v: any) => ({
           id: v.id,
           name: v.name,
-          price: v.price
+          price: v.price,
+          images: v.image_url ? [v.image_url] : [],
+          image_url: v.image_url,
+          sku: v.sku,
+          stock: v.stock,
+          sort_order: v.sort_order,
+          created_at: v.created_at,
+          updated_at: v.updated_at
         })) || [],
-        addOns: item.add_ons?.map(a => ({
+        addOns: item.add_ons?.map((a: any) => ({
           id: a.id,
           name: a.name,
           price: a.price,
-          category: a.category
+          category: a.category,
+          image: a.image,
+          description: a.description
         })) || []
       })) || [];
+
 
       setMenuItems(formattedItems);
       setError(null);
@@ -64,10 +100,16 @@ export const useMenu = () => {
           name: item.name,
           description: item.description,
           base_price: item.basePrice,
+          discounted_price: item.discountedPrice || null,
           category: item.category,
+          subcategory: item.subcategory || null,
           popular: item.popular || false,
           available: item.available ?? true,
-          image_url: item.image || null
+          stock: item.stock || 0,
+          sku: item.sku || null,
+          brand: item.brand || null,
+          weight: item.weight || null,
+          image_url: item.images?.[0] || null
         })
         .select()
         .single();
@@ -122,10 +164,16 @@ export const useMenu = () => {
           name: updates.name,
           description: updates.description,
           base_price: updates.basePrice,
+          discounted_price: updates.discountedPrice || null,
           category: updates.category,
+          subcategory: updates.subcategory || null,
           popular: updates.popular,
           available: updates.available,
-          image_url: updates.image || null
+          stock: updates.stock,
+          sku: updates.sku || null,
+          brand: updates.brand || null,
+          weight: updates.weight || null,
+          image_url: updates.images?.[0] || null
         })
         .eq('id', id);
 
@@ -193,6 +241,12 @@ export const useMenu = () => {
     fetchMenuItems();
   }, []);
 
+  // Force refresh function
+  const refreshMenuItems = async () => {
+    console.log('🔄 Force refreshing menu items...');
+    await fetchMenuItems();
+  };
+
   return {
     menuItems,
     loading,
@@ -200,6 +254,7 @@ export const useMenu = () => {
     addMenuItem,
     updateMenuItem,
     deleteMenuItem,
-    refetch: fetchMenuItems
+    refetch: fetchMenuItems,
+    refreshMenuItems
   };
 };

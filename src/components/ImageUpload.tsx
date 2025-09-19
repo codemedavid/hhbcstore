@@ -52,7 +52,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <label className="block text-sm font-medium text-black mb-2">Menu Item Image</label>
+      <label className="block text-sm font-medium text-black mb-2">Item Image</label>
       
       {currentImage ? (
         <div className="relative">

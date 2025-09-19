@@ -12,119 +12,211 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type Database = {
   public: {
     Tables: {
-      categories: {
+      products: {
         Row: {
           id: string;
           name: string;
-          icon: string;
-          sort_order: number;
-          active: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          name: string;
-          icon: string;
-          sort_order?: number;
-          active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          icon?: string;
-          sort_order?: number;
-          active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      menu_items: {
-        Row: {
-          id: string;
-          name: string;
-          description: string;
+          description: string | null;
           base_price: number;
-          category: string;
+          category: 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+          images: string[];
           popular: boolean;
           available: boolean;
-          image_url: string | null;
+          brand: string | null;
+          ingredients: string[];
+          weight: string | null;
+          sku: string | null;
+          stock: number;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           name: string;
-          description: string;
+          description?: string | null;
           base_price: number;
-          category: string;
+          category: 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+          images?: string[];
           popular?: boolean;
           available?: boolean;
-          image_url?: string | null;
+          brand?: string | null;
+          ingredients?: string[];
+          weight?: string | null;
+          sku?: string | null;
+          stock?: number;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
-          description?: string;
+          description?: string | null;
           base_price?: number;
-          category?: string;
+          category?: 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+          images?: string[];
           popular?: boolean;
           available?: boolean;
-          image_url?: string | null;
+          brand?: string | null;
+          ingredients?: string[];
+          weight?: string | null;
+          sku?: string | null;
+          stock?: number;
           created_at?: string;
           updated_at?: string;
         };
       };
-      variations: {
+      product_variations: {
         Row: {
           id: string;
-          menu_item_id: string;
+          product_id: string;
           name: string;
           price: number;
+          images: string[];
+          sku: string | null;
+          stock: number;
           created_at: string;
         };
         Insert: {
           id?: string;
-          menu_item_id: string;
+          product_id: string;
           name: string;
-          price: number;
+          price?: number;
+          images?: string[];
+          sku?: string | null;
+          stock?: number;
           created_at?: string;
         };
         Update: {
           id?: string;
-          menu_item_id?: string;
+          product_id?: string;
           name?: string;
           price?: number;
+          images?: string[];
+          sku?: string | null;
+          stock?: number;
           created_at?: string;
         };
       };
-      add_ons: {
+      product_add_ons: {
         Row: {
           id: string;
-          menu_item_id: string;
+          product_id: string;
           name: string;
           price: number;
           category: string;
+          image: string | null;
+          description: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          menu_item_id: string;
+          product_id: string;
           name: string;
           price: number;
           category: string;
+          image?: string | null;
+          description?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
-          menu_item_id?: string;
+          product_id?: string;
           name?: string;
           price?: number;
           category?: string;
+          image?: string | null;
+          description?: string | null;
+          created_at?: string;
+        };
+      };
+      orders: {
+        Row: {
+          id: string;
+          customer_name: string;
+          customer_email: string | null;
+          contact_number: string;
+          shipping_address: any;
+          shipping_method: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+          payment_method: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
+          reference_number: string | null;
+          subtotal: number;
+          shipping_fee: number;
+          total: number;
+          notes: string | null;
+          order_status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+          tracking_number: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_name: string;
+          customer_email?: string | null;
+          contact_number: string;
+          shipping_address: any;
+          shipping_method: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+          payment_method: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
+          reference_number?: string | null;
+          subtotal: number;
+          shipping_fee: number;
+          total: number;
+          notes?: string | null;
+          order_status?: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+          tracking_number?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_name?: string;
+          customer_email?: string | null;
+          contact_number?: string;
+          shipping_address?: any;
+          shipping_method?: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+          payment_method?: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
+          reference_number?: string | null;
+          subtotal?: number;
+          shipping_fee?: number;
+          total?: number;
+          notes?: string | null;
+          order_status?: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+          tracking_number?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          product_id: string;
+          variation_id: string | null;
+          quantity: number;
+          unit_price: number;
+          total_price: number;
+          selected_add_ons: any;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          product_id: string;
+          variation_id?: string | null;
+          quantity: number;
+          unit_price: number;
+          total_price: number;
+          selected_add_ons?: any;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          product_id?: string;
+          variation_id?: string | null;
+          quantity?: number;
+          unit_price?: number;
+          total_price?: number;
+          selected_add_ons?: any;
           created_at?: string;
         };
       };
@@ -137,6 +229,7 @@ export type Database = {
           qr_code_url: string;
           active: boolean;
           sort_order: number;
+          cod_enabled: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -148,6 +241,7 @@ export type Database = {
           qr_code_url: string;
           active?: boolean;
           sort_order?: number;
+          cod_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -159,6 +253,7 @@ export type Database = {
           qr_code_url?: string;
           active?: boolean;
           sort_order?: number;
+          cod_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
