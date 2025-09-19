@@ -26,7 +26,7 @@ const Hero: React.FC = () => {
             <span className="text-pink-500">hbc</span>
             <span className="text-black text-4xl md:text-5xl font-semibold tracking-widest ml-2 items-end flex mt-2">SHOPPE</span>
           </div>
-          <span className="block text-pink-500 text-2xl md:text-3xl font-light tracking-widest">🩵 Beauty & Care <br className='md:hidden'/> For Everyone 🩷</span>
+          <span className="block text-pink-500 text-2xl md:text-3xl font-light tracking-widest">💙 Beauty & Care <br className='md:hidden'/> For Everyone 🩷</span>
         </h1>
         
         <p className="text-xl text-soft-600 mb-12 max-w-4xl mx-auto animate-slide-up leading-relaxed font-light">
