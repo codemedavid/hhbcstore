@@ -17,3 +17,4 @@ A modern e-commerce platform for H&HBC beauty products featuring product variati
 - Tailwind CSS
 - React Router
 # hhbc
+# hhbcstore
