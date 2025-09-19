@@ -20,13 +20,13 @@ const Hero: React.FC = () => {
         </div>
         
         <h1 className="text-6xl md:text-8xl font-bold text-soft-800 mb-8 animate-fade-in tracking-tight text-center">
-          <div className="text-6xl font-bold tracking-wide mb-4 whitespace-nowrap flex items-center justify-center">
+          <div className="text-6xl font-bold tracking-wide mb-4 whitespace-nowrap flex items-end justify-center items-center gap-1">
             <span className="text-blue-400">H</span>
-            <span className="text-gray-400 text-2xl flex items-center">&</span>
+            <span className="text-gray-400 text-2xl flex items-end items-center">&</span>
             <span className="text-pink-500">hbc</span>
-            <span className="text-black text-4xl md:text-5xl font-semibold tracking-widest ml-2">SHOPPE</span>
+            <span className="text-black text-4xl md:text-5xl font-semibold tracking-widest ml-2 items-end flex mt-2">SHOPPE</span>
           </div>
-          <span className="block text-pink-500 text-2xl md:text-3xl font-light tracking-widest">✨ Beauty & Care For Everyone ✨</span>
+          <span className="block text-pink-500 text-2xl md:text-3xl font-light tracking-widest">🩵 Beauty & Care <br className='md:hidden'/> For Everyone 🩷</span>
         </h1>
         
         <p className="text-xl text-soft-600 mb-12 max-w-4xl mx-auto animate-slide-up leading-relaxed font-light">
