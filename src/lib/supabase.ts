@@ -136,7 +136,7 @@ export type Database = {
           customer_email: string | null;
           contact_number: string;
           shipping_address: any;
-          shipping_method: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+          shipping_method: 'cod-delivery' | 'cop-lbc-branch' | 'other-courier';
           payment_method: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
           reference_number: string | null;
           subtotal: number;
@@ -154,7 +154,7 @@ export type Database = {
           customer_email?: string | null;
           contact_number: string;
           shipping_address: any;
-          shipping_method: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+          shipping_method: 'cod-delivery' | 'cop-lbc-branch' | 'other-courier';
           payment_method: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
           reference_number?: string | null;
           subtotal: number;

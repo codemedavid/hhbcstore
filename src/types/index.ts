@@ -60,7 +60,7 @@ export interface OrderData {
     postalCode: string;
     country: string;
   };
-  shippingMethod: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+  shippingMethod: 'cod-delivery' | 'cop-lbc-branch' | 'other-courier';
   paymentMethod: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
   referenceNumber?: string;
   total: number;
@@ -71,7 +71,7 @@ export interface OrderData {
 }
 
 export type PaymentMethod = 'gcash' | 'maya' | 'bank-transfer' | 'cod';
-export type ShippingMethod = 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+export type ShippingMethod = 'cod-delivery' | 'cop-lbc-branch' | 'other-courier';
 export type ProductCategory = 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 

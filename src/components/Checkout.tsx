@@ -24,7 +24,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     postalCode: '',
     country: 'Philippines'
   });
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('lbc-standard');
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('cod-delivery');
   const [shippingFee, setShippingFee] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
   const [notes, setNotes] = useState('');
@@ -218,7 +218,7 @@ ${cartItems.map(item => {
 }).join('\n')}
 
 💰 SUBTOTAL: ₱${totalPrice}
-🚚 SHIPPING FEE: ₱${shippingFee}
+🚚 SHIPPING: FREE
 💰 TOTAL: ₱${totalWithShipping}
 
 💳 Payment: ${selectedPaymentMethod?.name || paymentMethod}
@@ -343,7 +343,7 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               )}
               <div className="flex items-center justify-between text-lg">
                 <span>Shipping:</span>
-                <span>₱{shippingFee}</span>
+                <span className="text-green-600 font-semibold">FREE</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black border-t border-pink-200 pt-2">
                 <span>Total:</span>
@@ -459,16 +459,16 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                 <label className="block text-sm font-medium text-black mb-3">Shipping Method *</label>
                 <div className="grid grid-cols-1 gap-3">
                   {[
-                    { value: 'lbc-standard', label: 'LBC Standard (3-5 days)', icon: '📦', fee: 120 },
-                    { value: 'lbc-express', label: 'LBC Express (1-2 days)', icon: '⚡', fee: 200 },
-                    { value: 'lbc-same-day', label: 'LBC Same Day', icon: '🚀', fee: 350 }
+                    { value: 'cod-delivery', label: 'COD (Delivery)', icon: '🚚' },
+                    { value: 'cop-lbc-branch', label: 'COP LBC Branch (Pick Up)', icon: '🏢' },
+                    { value: 'other-courier', label: 'Other Available Courier', icon: '📦' }
                   ].map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => {
                         setShippingMethod(option.value as ShippingMethod);
-                        setShippingFee(option.fee);
+                        setShippingFee(0);
                       }}
                       className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                         shippingMethod === option.value
@@ -476,12 +476,11 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                           : 'border-pink-300 bg-white text-gray-700 hover:border-pink-400'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-center">
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">{option.icon}</span>
                           <span className="font-medium">{option.label}</span>
                         </div>
-                        <span className="font-bold">₱{option.fee}</span>
                       </div>
                     </button>
                   ))}
@@ -750,7 +749,7 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
             )}
             <div className="flex items-center justify-between text-lg">
               <span>Shipping:</span>
-              <span>₱{shippingFee}</span>
+              <span className="text-green-600 font-semibold">FREE</span>
             </div>
             <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black border-t border-pink-200 pt-2">
               <span>Total:</span>
