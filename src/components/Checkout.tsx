@@ -14,7 +14,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
-  const [email, setEmail] = useState('');
   const [shippingAddress, setShippingAddress] = useState({
     street: '',
     city: '',
@@ -49,10 +48,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     const totalWithShipping = totalPrice + shippingFee;
     
     const orderDetails = `
-🛍️ H&HBC BEAUTY ORDER
+🛍️ H&HBC SHOPPE ORDER
 
 👤 Customer: ${customerName}
-📧 Email: ${email}
 📞 Contact: ${contactNumber}
 
 🚚 SHIPPING ADDRESS:
@@ -88,7 +86,7 @@ ${cartItems.map(item => {
 
 ${notes ? `📝 Notes: ${notes}` : ''}
 
-Please confirm this order to proceed. Thank you for choosing H&HBC! 💄✨
+Please confirm this order to proceed. Thank you for choosing H&HBC SHOPPE! 💄✨
     `.trim();
 
     const encodedMessage = encodeURIComponent(orderDetails);
@@ -98,7 +96,7 @@ Please confirm this order to proceed. Thank you for choosing H&HBC! 💄✨
     
   };
 
-  const isDetailsValid = customerName && contactNumber && email && 
+  const isDetailsValid = customerName && contactNumber && 
     shippingAddress.street && shippingAddress.city && shippingAddress.province && shippingAddress.postalCode;
 
   if (step === 'details') {
@@ -229,17 +227,6 @@ Please confirm this order to proceed. Thank you for choosing H&HBC! 💄✨
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-black mb-2">Email Address *</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
-                  placeholder="your.email@example.com"
-                  required
-                />
-              </div>
 
               {/* Shipping Method */}
               <div>
@@ -448,7 +435,6 @@ Please confirm this order to proceed. Thank you for choosing H&HBC! 💄✨
             <div className="bg-pink-50 rounded-lg p-4">
               <h4 className="font-medium text-black mb-2">Customer Details</h4>
               <p className="text-sm text-gray-600">Name: {customerName}</p>
-              <p className="text-sm text-gray-600">Email: {email}</p>
               <p className="text-sm text-gray-600">Contact: {contactNumber}</p>
               <p className="text-sm text-gray-600">Shipping: {shippingMethod.replace('lbc-', '').toUpperCase()}</p>
               <div className="mt-2">

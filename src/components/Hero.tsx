@@ -15,12 +15,12 @@ const Hero: React.FC = () => {
       <div className="max-w-6xl mx-auto text-center relative z-10">
         <div className="mb-8">
           <div className="w-28 h-28 bg-gradient-to-br from-pink-200 to-pink-300 rounded-cute flex items-center justify-center mx-auto mb-6 animate-scale-in shadow-floating">
-            <img src="/logo.jpg" alt="H&HBC Logo" className="w-20 h-20 rounded-soft object-cover" />
+            <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-20 h-20 rounded-soft object-cover" />
           </div>
         </div>
         
         <h1 className="text-6xl md:text-8xl font-noto font-bold text-soft-800 mb-8 animate-fade-in tracking-tight">
-          H&HBC
+          H&HBC SHOPPE
           <span className="block text-pink-500 mt-4 text-2xl md:text-3xl font-light tracking-widest">✨ Beauty • Cosmetics • Care ✨</span>
         </h1>
         

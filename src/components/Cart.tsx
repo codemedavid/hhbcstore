@@ -26,7 +26,7 @@ const Cart: React.FC<CartProps> = ({
       <div className="max-w-4xl mx-auto px-4 py-12">
       <div className="text-center py-20">
         <div className="w-24 h-24 bg-gradient-to-br from-pink-200 to-pink-300 rounded-cute flex items-center justify-center mx-auto mb-8 shadow-floating">
-          <img src="/logo.jpg" alt="H&HBC Logo" className="w-16 h-16 rounded-soft object-cover" />
+          <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-16 h-16 rounded-soft object-cover" />
         </div>
         <h2 className="text-4xl font-noto font-bold text-soft-800 mb-4">Your cart is empty ✨</h2>
         <p className="text-soft-600 mb-10 text-xl">Add some beautiful products to get started! 💕</p>

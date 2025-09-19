@@ -33,10 +33,10 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onCatalogC
             className="flex items-center space-x-4 text-soft-800 hover:text-pink-600 transition-all duration-300 group"
           >
             <div className="w-14 h-14 bg-gradient-to-br from-pink-200 to-pink-300 rounded-cute flex items-center justify-center shadow-floating group-hover:shadow-glow transition-all duration-300 group-hover:scale-105">
-              <img src="/logo.jpg" alt="H&HBC Logo" className="w-10 h-10 rounded-soft object-cover" />
+              <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-10 h-10 rounded-soft object-cover" />
             </div>
             <div className="text-left">
-              <h1 className="text-3xl font-noto font-bold text-soft-800 tracking-wide group-hover:text-pink-600 transition-colors duration-300">H&HBC</h1>
+              <h1 className="text-3xl font-noto font-bold text-soft-800 tracking-wide group-hover:text-pink-600 transition-colors duration-300">H&HBC SHOPPE</h1>
               <p className="text-sm text-pink-500 font-medium tracking-wider">Beauty Collection ✨</p>
             </div>
           </button>

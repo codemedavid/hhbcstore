@@ -424,9 +424,9 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
-              <img src="/logo.jpg" alt="H&HBC Logo" className="w-12 h-12 rounded-full object-cover" />
+              <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-12 h-12 rounded-full object-cover" />
             </div>
-            <h1 className="text-2xl font-playfair font-semibold text-black">H&hbc Admin Access</h1>
+            <h1 className="text-2xl font-playfair font-semibold text-black">H&HBC SHOPPE Admin Access</h1>
             <p className="text-gray-600 mt-2">Enter password to access the admin dashboard</p>
           </div>
           
@@ -1305,8 +1305,8 @@ const AdminDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <img src="/logo.jpg" alt="H&HBC Logo" className="w-8 h-8 rounded-soft object-cover" />
-              <h1 className="text-2xl font-noto font-semibold text-black">H&hbc Admin</h1>
+            <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-8 h-8 rounded-soft object-cover" />
+            <h1 className="text-2xl font-noto font-semibold text-black">H&HBC SHOPPE Admin</h1>
             </div>
             <div className="flex items-center space-x-4">
               <button
