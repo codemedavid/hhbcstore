@@ -55,6 +55,7 @@ export interface OrderData {
   email?: string;
   shippingAddress: {
     street: string;
+    barangay: string;
     city: string;
     province: string;
     postalCode: string;
@@ -72,7 +73,7 @@ export interface OrderData {
 
 export type PaymentMethod = 'gcash' | 'maya' | 'bank-transfer' | 'cod';
 export type ShippingMethod = 'cod-delivery' | 'cop-lbc-branch' | 'other-courier';
-export type ProductCategory = 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+export type ProductCategory = string; // Dynamic categories from database
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 // Alias for backward compatibility

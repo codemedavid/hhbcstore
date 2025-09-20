@@ -43,8 +43,8 @@ function MainApp() {
     setToast(prev => ({ ...prev, isVisible: false }));
   };
 
-  const handleAddToCart = (item: any) => {
-    const success = cart.addToCart(item, 1);
+  const handleAddToCart = (item: any, quantity: number = 1, variation?: any, addOns?: any[]) => {
+    const success = cart.addToCart(item, quantity, variation, addOns);
     if (success) {
       showToast(`${item.name} added to cart!`, 'success');
     }

@@ -19,6 +19,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [contactNumber, setContactNumber] = useState('');
   const [shippingAddress, setShippingAddress] = useState({
     street: '',
+    barangay: '',
     city: '',
     province: '',
     postalCode: '',
@@ -35,6 +36,28 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [voucherError, setVoucherError] = useState('');
   const [voucherDiscount, setVoucherDiscount] = useState(0);
   const [voucherSuccess, setVoucherSuccess] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Debug function to test Messenger URLs
+  const testMessengerUrls = () => {
+    const testUrls = [
+      'https://m.me/hhbcshoppe',
+      'https://www.messenger.com/t/hhbcshoppe',
+      'https://facebook.com/messages/t/hhbcshoppe',
+      'https://m.me/HHBCSHOPPE',
+      'https://m.me/HHBC-SHOPPE',
+      'https://www.messenger.com'
+    ];
+    
+    console.log('Testing Messenger URLs:');
+    testUrls.forEach((url, index) => {
+      console.log(`${index + 1}. ${url}`);
+      setTimeout(() => {
+        console.log(`Opening: ${url}`);
+        window.open(url, '_blank');
+      }, index * 1000);
+    });
+  };
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -163,6 +186,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   };
 
   const handlePlaceOrder = async () => {
+    if (isProcessing) return; // Prevent multiple clicks
+    
+    setIsProcessing(true);
     const totalWithShipping = totalPrice + shippingFee - voucherDiscount;
     
     try {
@@ -194,6 +220,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
 🚚 SHIPPING ADDRESS:
 ${shippingAddress.street}
+${shippingAddress.barangay}
 ${shippingAddress.city}, ${shippingAddress.province} ${shippingAddress.postalCode}
 ${shippingAddress.country}
 
@@ -218,7 +245,7 @@ ${cartItems.map(item => {
 }).join('\n')}
 
 💰 SUBTOTAL: ₱${totalPrice}
-🚚 SHIPPING: FREE
+🚚 SHIPPING FEE: ₱${shippingFee}
 💰 TOTAL: ₱${totalWithShipping}
 
 💳 Payment: ${selectedPaymentMethod?.name || paymentMethod}
@@ -231,22 +258,116 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
       `.trim();
 
       const encodedMessage = encodeURIComponent(orderDetails);
-      const messengerUrl = `https://m.me/hhbcshoppe?text=${encodedMessage}`;
       
-      // Show success message
-      alert(`Order #${order.order_number} created successfully! Redirecting to Messenger...`);
+      // Try multiple Messenger URL formats for better compatibility
+      const messengerUrls = [
+        `https://m.me/hhbcshoppe?text=${encodedMessage}`,
+        `https://www.messenger.com/t/hhbcshoppe?text=${encodedMessage}`,
+        `https://facebook.com/messages/t/hhbcshoppe?text=${encodedMessage}`,
+        // Alternative formats that might work better
+        `https://m.me/hhbcshoppe`,
+        `https://www.messenger.com/t/hhbcshoppe`,
+        `https://facebook.com/messages/t/hhbcshoppe`,
+        // Fallback - just open Messenger without specific page
+        `https://www.messenger.com`,
+        `https://m.me`
+      ];
       
-      // Open Messenger
-      window.open(messengerUrl, '_blank');
+      // Show success message with toast notification
+      console.log(`Order #${order.order_number} created successfully! Redirecting to Messenger...`);
+      console.log('Messenger URLs:', messengerUrls);
+      console.log('Encoded message length:', encodedMessage.length);
+      
+      // Open Messenger immediately without alert
+      try {
+        // Try the first URL (m.me with text)
+        console.log('Trying URL 1:', messengerUrls[0]);
+        const opened = window.open(messengerUrls[0], '_blank');
+        
+        // Check if popup was blocked
+        if (!opened || opened.closed || typeof opened.closed == 'undefined') {
+          console.log('Popup blocked or failed, trying alternative URLs');
+          
+          // Try different approaches
+          setTimeout(() => {
+            console.log('Trying URL 4 (m.me without text):', messengerUrls[3]);
+            window.open(messengerUrls[3], '_blank');
+          }, 100);
+          
+          setTimeout(() => {
+            console.log('Trying URL 7 (messenger.com):', messengerUrls[6]);
+            window.open(messengerUrls[6], '_blank');
+          }, 500);
+        }
+        
+      } catch (error) {
+        console.error('Error opening Messenger:', error);
+        // Fallback to direct Facebook Messenger
+        console.log('Trying fallback URL 7 (messenger.com):', messengerUrls[6]);
+        window.open(messengerUrls[6], '_blank');
+      }
+      
+      // Show success notification with copy-to-clipboard functionality
+      const successNotification = document.createElement('div');
+      successNotification.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 20px 24px; border-radius: 12px; z-index: 10000; box-shadow: 0 8px 32px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 400px;">
+          <div style="font-weight: 600; margin-bottom: 8px; font-size: 16px;">✅ Order Created Successfully!</div>
+          <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;">Order #${order.order_number}</div>
+          <div style="font-size: 13px; opacity: 0.8; margin-bottom: 12px;">
+            If Messenger didn't open automatically:<br/>
+            1. Click "Copy Order Details" to copy your order<br/>
+            2. Click "Open Messenger" to open Facebook Messenger<br/>
+            3. Paste the order details in your message
+          </div>
+          <button onclick="navigator.clipboard.writeText('${orderDetails.replace(/'/g, "\\'")}').then(() => alert('Order details copied to clipboard!'))" 
+                  style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-right: 8px;">
+            📋 Copy Order Details
+          </button>
+          <button onclick="window.open('https://m.me/hhbcshoppe', '_blank')" 
+                  style="background: #1877F2; border: none; color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-right: 8px;">
+            💬 Open Messenger
+          </button>
+          <button onclick="window.open('https://www.messenger.com', '_blank')" 
+                  style="background: #1877F2; border: none; color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+            📱 Messenger Web
+          </button>
+        </div>
+      `;
+      document.body.appendChild(successNotification);
+      
+      // Remove notification after 10 seconds
+      setTimeout(() => {
+        if (successNotification.parentNode) {
+          successNotification.parentNode.removeChild(successNotification);
+        }
+      }, 10000);
       
     } catch (error) {
       console.error('Error creating order:', error);
-      alert(`Failed to create order: ${error instanceof Error ? error.message : 'Please try again.'}`);
+      
+      // Show error notification instead of alert
+      const errorNotification = document.createElement('div');
+      errorNotification.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; background: #EF4444; color: white; padding: 16px 24px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 400px;">
+          <div style="font-weight: 600; margin-bottom: 4px;">❌ Order Failed</div>
+          <div style="font-size: 14px; opacity: 0.9;">${error instanceof Error ? error.message : 'Please try again.'}</div>
+        </div>
+      `;
+      document.body.appendChild(errorNotification);
+      
+      // Remove notification after 5 seconds
+      setTimeout(() => {
+        if (errorNotification.parentNode) {
+          errorNotification.parentNode.removeChild(errorNotification);
+        }
+      }, 5000);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const isDetailsValid = customerName && contactNumber && 
-    shippingAddress.street && shippingAddress.city && shippingAddress.province && shippingAddress.postalCode;
+    shippingAddress.street && shippingAddress.barangay && shippingAddress.city && shippingAddress.province && shippingAddress.postalCode;
 
   if (step === 'details') {
     return (
@@ -343,7 +464,7 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               )}
               <div className="flex items-center justify-between text-lg">
                 <span>Shipping:</span>
-                <span className="text-green-600 font-semibold">FREE</span>
+                <span>₱{shippingFee}</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black border-t border-pink-200 pt-2">
                 <span>Total:</span>
@@ -459,16 +580,16 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                 <label className="block text-sm font-medium text-black mb-3">Shipping Method *</label>
                 <div className="grid grid-cols-1 gap-3">
                   {[
-                    { value: 'cod-delivery', label: 'COD (Delivery)', icon: '🚚' },
-                    { value: 'cop-lbc-branch', label: 'COP LBC Branch (Pick Up)', icon: '🏢' },
-                    { value: 'other-courier', label: 'Other Available Courier', icon: '📦' }
+                    { value: 'cod-delivery', label: 'COD (Delivery)', icon: '🚚', fee: 0 },
+                    { value: 'cop-lbc-branch', label: 'COP LBC Branch (Pick Up)', icon: '🏢', fee: 0 },
+                    { value: 'other-courier', label: 'Other Available Courier', icon: '📦', fee: 0 }
                   ].map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => {
                         setShippingMethod(option.value as ShippingMethod);
-                        setShippingFee(0);
+                        setShippingFee(option.fee);
                       }}
                       className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                         shippingMethod === option.value
@@ -476,11 +597,12 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                           : 'border-pink-300 bg-white text-gray-700 hover:border-pink-400'
                       }`}
                     >
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">{option.icon}</span>
                           <span className="font-medium">{option.label}</span>
                         </div>
+                        <span className="font-bold">₱{option.fee}</span>
                       </div>
                     </button>
                   ))}
@@ -495,7 +617,19 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
                   value={shippingAddress.street}
                   onChange={(e) => setShippingAddress(prev => ({ ...prev, street: e.target.value }))}
                   className="w-full px-4 py-3 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
-                  placeholder="House number, street name, barangay"
+                  placeholder="House number, street name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">Barangay *</label>
+                <input
+                  type="text"
+                  value={shippingAddress.barangay}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, barangay: e.target.value }))}
+                  className="w-full px-4 py-3 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter your barangay"
                   required
                 />
               </div>
@@ -665,6 +799,7 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               <div className="mt-2">
                 <p className="text-sm text-gray-600 font-medium">Shipping Address:</p>
                 <p className="text-sm text-gray-600">{shippingAddress.street}</p>
+                <p className="text-sm text-gray-600">{shippingAddress.barangay}</p>
                 <p className="text-sm text-gray-600">{shippingAddress.city}, {shippingAddress.province} {shippingAddress.postalCode}</p>
                 <p className="text-sm text-gray-600">{shippingAddress.country}</p>
               </div>
@@ -749,7 +884,7 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
             )}
             <div className="flex items-center justify-between text-lg">
               <span>Shipping:</span>
-              <span className="text-green-600 font-semibold">FREE</span>
+              <span>₱{shippingFee}</span>
             </div>
             <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black border-t border-pink-200 pt-2">
               <span>Total:</span>
@@ -759,19 +894,42 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
 
           <button
             onClick={handlePlaceOrder}
-            disabled={orderLoading}
+            disabled={orderLoading || isProcessing}
             className={`w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform ${
-              orderLoading 
+              (orderLoading || isProcessing)
                 ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-red-600 text-white hover:bg-red-700 hover:scale-[1.02]'
+                : 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 hover:scale-[1.02] shadow-lg hover:shadow-red-500/25'
             }`}
           >
-            {orderLoading ? 'Creating Order...' : 'Place Order via Messenger'}
+            {(orderLoading || isProcessing) ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                {isProcessing ? 'Processing...' : 'Creating Order...'}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <span>💬</span>
+                Complete Order & Open Messenger
+              </div>
+            )}
           </button>
           
-          <p className="text-xs text-gray-500 text-center mt-3">
-            You'll be redirected to Facebook Messenger to confirm your order. Don't forget to attach your payment screenshot!
-          </p>
+          {/* Temporary debug button - remove this later */}
+          <button
+            onClick={testMessengerUrls}
+            className="w-full mt-2 py-2 px-4 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+          >
+            🔧 Test Messenger URLs (Debug)
+          </button>
+          
+          <div className="text-center mt-3">
+            <p className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">✨ One-Click Order Process:</span>
+            </p>
+            <p className="text-xs text-gray-500">
+              Order will be saved automatically • Messenger will open instantly • Send your payment screenshot there
+            </p>
+          </div>
         </div>
       </div>
     </div>

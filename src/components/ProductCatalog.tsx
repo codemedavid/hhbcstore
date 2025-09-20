@@ -1,70 +1,31 @@
 import React, { useState } from 'react';
-import { Product, CartItem } from '../types';
+import { Product, CartItem, Variation, AddOn } from '../types';
 import ProductCard from './ProductCard';
 import CategoryFilter from './CategoryFilter';
 import SearchBar from './SearchBar';
+import { useCategories } from '../hooks/useCategories';
 
 interface ProductCatalogProps {
   products: Product[];
-  addToCart: (item: CartItem) => void;
+  addToCart: (item: Product, quantity: number, variation?: Variation, addOns?: AddOn[]) => boolean;
   cartItems: CartItem[];
   updateQuantity: (id: string, quantity: number) => void;
   selectedCategory?: string;
   onCategoryChange?: (categoryId: string) => void;
 }
 
-const CATEGORIES = [
-  { id: 'all', name: 'All Products', icon: '🛍️' },
-  { 
-    id: 'hair-care', 
-    name: 'Hair Care', 
-    icon: '💇‍♀️',
-    subcategories: [
-      { id: 'hair-care-shampoo', name: 'Shampoo', icon: '🧴' },
-      { id: 'hair-care-conditioner', name: 'Conditioner', icon: '💧' },
-      { id: 'hair-care-treatment', name: 'Treatment', icon: '✨' },
-      { id: 'hair-care-styling', name: 'Styling', icon: '🎨' }
-    ]
-  },
-  { 
-    id: 'cosmetics', 
-    name: 'Cosmetics', 
-    icon: '💄',
-    subcategories: [
-      { id: 'cosmetics-foundation', name: 'Foundation', icon: '🎭' },
-      { id: 'cosmetics-lipstick', name: 'Lipstick', icon: '💋' },
-      { id: 'cosmetics-eyeshadow', name: 'Eyeshadow', icon: '👁️' },
-      { id: 'cosmetics-mascara', name: 'Mascara', icon: '👀' }
-    ]
-  },
-  { 
-    id: 'skin-care', 
-    name: 'Skin Care', 
-    icon: '✨',
-    subcategories: [
-      { id: 'skin-care-cleanser', name: 'Cleanser', icon: '🧼' },
-      { id: 'skin-care-moisturizer', name: 'Moisturizer', icon: '💧' },
-      { id: 'skin-care-serum', name: 'Serum', icon: '💎' },
-      { id: 'skin-care-mask', name: 'Face Mask', icon: '🎭' }
-    ]
-  },
-  { 
-    id: 'nail-care', 
-    name: 'Nail Care', 
-    icon: '💅',
-    subcategories: [
-      { id: 'nail-care-polish', name: 'Nail Polish', icon: '💅' },
-      { id: 'nail-care-remover', name: 'Nail Polish Remover', icon: '🧽' },
-      { id: 'nail-care-tools', name: 'Nail Tools', icon: '✂️' },
-      { id: 'nail-care-treatment', name: 'Nail Treatment', icon: '💪' }
-    ]
-  }
-];
 
 export default function ProductCatalog({ products, addToCart, cartItems, updateQuantity, selectedCategory: propSelectedCategory, onCategoryChange }: ProductCatalogProps) {
+  const { categories, loading: categoriesLoading } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState(propSelectedCategory || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'price-low' | 'price-high' | 'popular'>('popular');
+
+  // Create dynamic categories array with "All Products" option
+  const dynamicCategories = [
+    { id: 'all', name: 'All Products', icon: '🛍️' },
+    ...categories
+  ];
 
   // Sync prop with local state
   React.useEffect(() => {
@@ -119,16 +80,23 @@ export default function ProductCatalog({ products, addToCart, cartItems, updateQ
         />
         
         <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
-          <CategoryFilter
-            categories={CATEGORIES}
-            selectedCategory={selectedCategory}
-            onCategoryChange={(categoryId: string) => {
-              setSelectedCategory(categoryId);
-              if (onCategoryChange) {
-                onCategoryChange(categoryId);
-              }
-            }}
-          />
+          {categoriesLoading ? (
+            <div className="flex items-center gap-2 text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-500"></div>
+              Loading categories...
+            </div>
+          ) : (
+            <CategoryFilter
+              categories={dynamicCategories}
+              selectedCategory={selectedCategory}
+              onCategoryChange={(categoryId: string) => {
+                setSelectedCategory(categoryId);
+                if (onCategoryChange) {
+                  onCategoryChange(categoryId);
+                }
+              }}
+            />
+          )}
           
           <div className="flex items-center gap-3">
             <label className="text-sm font-medium text-soft-700">Sort by:</label>

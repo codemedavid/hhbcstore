@@ -18,7 +18,7 @@ export type Database = {
           name: string;
           description: string | null;
           base_price: number;
-          category: 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+          category: string;
           images: string[];
           popular: boolean;
           available: boolean;
@@ -35,7 +35,7 @@ export type Database = {
           name: string;
           description?: string | null;
           base_price: number;
-          category: 'hair-care' | 'cosmetics' | 'skin-care' | 'nail-care';
+          category: string;
           images?: string[];
           popular?: boolean;
           available?: boolean;
@@ -172,7 +172,7 @@ export type Database = {
           customer_email?: string | null;
           contact_number?: string;
           shipping_address?: any;
-          shipping_method?: 'lbc-standard' | 'lbc-express' | 'lbc-same-day';
+          shipping_method?: 'cod-delivery' | 'cop-lbc-branch' | 'other-courier';
           payment_method?: 'gcash' | 'maya' | 'bank-transfer' | 'cod';
           reference_number?: string | null;
           subtotal?: number;
