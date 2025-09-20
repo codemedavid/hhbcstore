@@ -38,26 +38,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [voucherSuccess, setVoucherSuccess] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Debug function to test Messenger URLs
-  const testMessengerUrls = () => {
-    const testUrls = [
-      'https://m.me/hhbcshoppe',
-      'https://www.messenger.com/t/hhbcshoppe',
-      'https://facebook.com/messages/t/hhbcshoppe',
-      'https://m.me/HHBCSHOPPE',
-      'https://m.me/HHBC-SHOPPE',
-      'https://www.messenger.com'
-    ];
-    
-    console.log('Testing Messenger URLs:');
-    testUrls.forEach((url, index) => {
-      console.log(`${index + 1}. ${url}`);
-      setTimeout(() => {
-        console.log(`Opening: ${url}`);
-        window.open(url, '_blank');
-      }, index * 1000);
-    });
-  };
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -211,7 +191,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
       const order = await createOrder(orderData, cartItems);
     
       // Generate order details for Messenger
-      const orderDetails = `
+    const orderDetails = `
 🛍️ H&hbc SHOPPE ORDER
 📋 Order #: ${order.order_number}
 
@@ -224,7 +204,10 @@ ${shippingAddress.barangay}
 ${shippingAddress.city}, ${shippingAddress.province} ${shippingAddress.postalCode}
 ${shippingAddress.country}
 
-📦 Shipping Method: ${shippingMethod.replace('lbc-', '').toUpperCase()}
+📦 Shipping Method: ${shippingMethod === 'cod-delivery' ? 'COD (Delivery)' : 
+  shippingMethod === 'cop-lbc-branch' ? 'COP LBC Branch (Pick Up)' : 
+  shippingMethod === 'other-courier' ? 'Other Available Courier' : 
+  String(shippingMethod).toUpperCase()}
 ${appliedVoucher ? `🏷️ Voucher: ${appliedVoucher.code} (-₱${voucherDiscount.toFixed(2)})` : ''}
 
 📋 ORDER DETAILS:
@@ -245,7 +228,7 @@ ${cartItems.map(item => {
 }).join('\n')}
 
 💰 SUBTOTAL: ₱${totalPrice}
-🚚 SHIPPING FEE: ₱${shippingFee}
+🚚 SHIPPING FEE: ₱${shippingFee.toFixed(2)}
 💰 TOTAL: ₱${totalWithShipping}
 
 💳 Payment: ${selectedPaymentMethod?.name || paymentMethod}
@@ -255,9 +238,9 @@ ${notes ? `📝 Notes: ${notes}` : ''}
 
 ✅ Order saved to database with ID: ${order.id}
 Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄✨
-      `.trim();
+    `.trim();
 
-      const encodedMessage = encodeURIComponent(orderDetails);
+    const encodedMessage = encodeURIComponent(orderDetails);
       
       // Try multiple Messenger URL formats for better compatibility
       const messengerUrls = [
@@ -319,7 +302,32 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
             2. Click "Open Messenger" to open Facebook Messenger<br/>
             3. Paste the order details in your message
           </div>
-          <button onclick="navigator.clipboard.writeText('${orderDetails.replace(/'/g, "\\'")}').then(() => alert('Order details copied to clipboard!'))" 
+          <button onclick="
+            const textToCopy = \`${orderDetails.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('✅ Order details copied to clipboard!');
+              }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('✅ Order details copied to clipboard!');
+              });
+            } else {
+              // Fallback for non-secure contexts
+              const textArea = document.createElement('textarea');
+              textArea.value = textToCopy;
+              document.body.appendChild(textArea);
+              textArea.select();
+              document.execCommand('copy');
+              document.body.removeChild(textArea);
+              alert('✅ Order details copied to clipboard!');
+            }
+          " 
                   style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-right: 8px;">
             📋 Copy Order Details
           </button>
@@ -507,7 +515,7 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               <div>
                 <label className="block text-sm font-medium text-black mb-2">Voucher Code</label>
                 <div className="flex space-x-2">
-                  <input
+                <input
                     type="text"
                     value={voucherCode}
                     onChange={(e) => {
@@ -578,6 +586,9 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               {/* Shipping Method */}
               <div>
                 <label className="block text-sm font-medium text-black mb-3">Shipping Method *</label>
+                <p className="text-xs text-gray-600 mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                  ℹ️ Shipping fee rates varies depending on packaging size and location of receiver.
+                </p>
                 <div className="grid grid-cols-1 gap-3">
                   {[
                     { value: 'cod-delivery', label: 'COD (Delivery)', icon: '🚚', fee: 0 },
@@ -914,13 +925,6 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
             )}
           </button>
           
-          {/* Temporary debug button - remove this later */}
-          <button
-            onClick={testMessengerUrls}
-            className="w-full mt-2 py-2 px-4 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
-          >
-            🔧 Test Messenger URLs (Debug)
-          </button>
           
           <div className="text-center mt-3">
             <p className="text-sm text-gray-600 mb-1">
