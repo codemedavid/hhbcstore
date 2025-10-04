@@ -397,41 +397,69 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
             <h2 className="text-2xl font-noto font-medium text-black mb-6">Order Summary</h2>
             
             <div className="space-y-4 mb-6">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-2 border-b border-red-100">
-                  <div>
-                    <h4 className="font-medium text-black">{item.name}</h4>
-                    {item.selectedVariation && (
-                      <p className="text-sm text-gray-600">Size: {item.selectedVariation.name}</p>
-                    )}
-                    {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                      <p className="text-sm text-gray-600">
-                        Add-ons: {item.selectedAddOns.map(addOn => addOn.name).join(', ')}
-                      </p>
-                    )}
-                    <div className="text-sm text-gray-600">
-                      {item.discountedPrice ? (
-                        <div className="flex items-center gap-2">
-                          <span className="line-through text-gray-400">₱{item.basePrice}</span>
-                          <span className="text-green-600 font-semibold">₱{item.discountedPrice}</span>
-                          <span className="text-xs text-green-500">(Save ₱{item.basePrice - item.discountedPrice})</span>
-                        </div>
-                      ) : (
-                        <span>₱{item.basePrice}</span>
+              {cartItems.map((item) => {
+                // Get the display image - prefer variation image, fallback to product image
+                const getDisplayImage = () => {
+                  if (item.selectedVariation) {
+                    // Check for database image_url first, then fallback to images array
+                    if (item.selectedVariation.image_url) {
+                      return item.selectedVariation.image_url;
+                    }
+                    if (item.selectedVariation.images && item.selectedVariation.images.length > 0) {
+                      return item.selectedVariation.images[0];
+                    }
+                  }
+                  return item.images[0] || '/placeholder-product.jpg';
+                };
+
+                return (
+                  <div key={item.id} className="flex items-center justify-between py-3 border-b border-red-100">
+                    {/* Product Image */}
+                    <div className="flex-shrink-0 mr-4">
+                      <img
+                        src={getDisplayImage()}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-lg border border-gray-200 shadow-sm"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-product.jpg';
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1">
+                      <h4 className="font-medium text-black">{item.name}</h4>
+                      {item.selectedVariation && (
+                        <p className="text-sm text-gray-600">Size: {item.selectedVariation.name}</p>
                       )}
-                      <span className="block text-xs text-gray-500">per item x {item.quantity}</span>
+                      {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                        <p className="text-sm text-gray-600">
+                          Add-ons: {item.selectedAddOns.map(addOn => addOn.name).join(', ')}
+                        </p>
+                      )}
+                      <div className="text-sm text-gray-600">
+                        {item.discountedPrice ? (
+                          <div className="flex items-center gap-2">
+                            <span className="line-through text-gray-400">₱{item.basePrice}</span>
+                            <span className="text-green-600 font-semibold">₱{item.discountedPrice}</span>
+                            <span className="text-xs text-green-500">(Save ₱{item.basePrice - item.discountedPrice})</span>
+                          </div>
+                        ) : (
+                          <span>₱{item.basePrice}</span>
+                        )}
+                        <span className="block text-xs text-gray-500">per item x {item.quantity}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-semibold text-black">₱{item.totalPrice}</span>
+                      {item.discountedPrice && (
+                        <div className="text-xs text-green-500">
+                          Saved: ₱{(item.basePrice - item.discountedPrice) * item.quantity}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-semibold text-black">₱{item.totalPrice}</span>
-                    {item.discountedPrice && (
-                      <div className="text-xs text-green-500">
-                        Saved: ₱{(item.basePrice - item.discountedPrice) * item.quantity}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             <div className="border-t border-pink-200 pt-4 space-y-2">
@@ -816,45 +844,73 @@ Please confirm this order to proceed. Thank you for choosing H&hbc SHOPPE! 💄�
               </div>
             </div>
 
-            {cartItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-2 border-b border-red-100">
-                <div>
-                  <h4 className="font-medium text-black">{item.name}</h4>
-                  {item.selectedVariation && (
-                    <p className="text-sm text-gray-600">Size: {item.selectedVariation.name}</p>
-                  )}
-                  {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                    <p className="text-sm text-gray-600">
-                      Add-ons: {item.selectedAddOns.map(addOn => 
-                        addOn.quantity && addOn.quantity > 1 
-                          ? `${addOn.name} x${addOn.quantity}`
-                          : addOn.name
-                      ).join(', ')}
-                    </p>
-                  )}
-                  <div className="text-sm text-gray-600">
-                    {item.discountedPrice ? (
-                      <div className="flex items-center gap-2">
-                        <span className="line-through text-gray-400">₱{item.basePrice}</span>
-                        <span className="text-green-600 font-semibold">₱{item.discountedPrice}</span>
-                        <span className="text-xs text-green-500">(Save ₱{item.basePrice - item.discountedPrice})</span>
-                      </div>
-                    ) : (
-                      <span>₱{item.basePrice}</span>
+            {cartItems.map((item) => {
+              // Get the display image - prefer variation image, fallback to product image
+              const getDisplayImage = () => {
+                if (item.selectedVariation) {
+                  // Check for database image_url first, then fallback to images array
+                  if (item.selectedVariation.image_url) {
+                    return item.selectedVariation.image_url;
+                  }
+                  if (item.selectedVariation.images && item.selectedVariation.images.length > 0) {
+                    return item.selectedVariation.images[0];
+                  }
+                }
+                return item.images[0] || '/placeholder-product.jpg';
+              };
+
+              return (
+                <div key={item.id} className="flex items-center justify-between py-3 border-b border-red-100">
+                  {/* Product Image */}
+                  <div className="flex-shrink-0 mr-4">
+                    <img
+                      src={getDisplayImage()}
+                      alt={item.name}
+                      className="w-16 h-16 object-cover rounded-lg border border-gray-200 shadow-sm"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder-product.jpg';
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <h4 className="font-medium text-black">{item.name}</h4>
+                    {item.selectedVariation && (
+                      <p className="text-sm text-gray-600">Size: {item.selectedVariation.name}</p>
                     )}
-                    <span className="block text-xs text-gray-500">per item x {item.quantity}</span>
+                    {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                      <p className="text-sm text-gray-600">
+                        Add-ons: {item.selectedAddOns.map(addOn => 
+                          addOn.quantity && addOn.quantity > 1 
+                            ? `${addOn.name} x${addOn.quantity}`
+                            : addOn.name
+                        ).join(', ')}
+                      </p>
+                    )}
+                    <div className="text-sm text-gray-600">
+                      {item.discountedPrice ? (
+                        <div className="flex items-center gap-2">
+                          <span className="line-through text-gray-400">₱{item.basePrice}</span>
+                          <span className="text-green-600 font-semibold">₱{item.discountedPrice}</span>
+                          <span className="text-xs text-green-500">(Save ₱{item.basePrice - item.discountedPrice})</span>
+                        </div>
+                      ) : (
+                        <span>₱{item.basePrice}</span>
+                      )}
+                      <span className="block text-xs text-gray-500">per item x {item.quantity}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold text-black">₱{item.totalPrice}</span>
+                    {item.discountedPrice && (
+                      <div className="text-xs text-green-500">
+                        Saved: ₱{(item.basePrice - item.discountedPrice) * item.quantity}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-semibold text-black">₱{item.totalPrice}</span>
-                  {item.discountedPrice && (
-                    <div className="text-xs text-green-500">
-                      Saved: ₱{(item.basePrice - item.discountedPrice) * item.quantity}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           <div className="border-t border-pink-200 pt-4 mb-6 space-y-2">

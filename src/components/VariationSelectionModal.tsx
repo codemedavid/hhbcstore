@@ -105,11 +105,24 @@ const VariationSelectionModal: React.FC<VariationSelectionModalProps> = ({
           {/* Item Image */}
           <div className="mb-6">
             <img
-              src={item.images && item.images.length > 0 ? item.images[0] : '/placeholder-product.jpg'}
-              alt={item.name}
-              className="w-full h-32 object-cover rounded-xl border border-gray-200"
+              key={selectedVariation?.id || 'default'} // Force re-render when variation changes
+              src={(() => {
+                // Show variation image if selected, otherwise show product image
+                if (selectedVariation) {
+                  // Check for database image_url first, then fallback to images array
+                  if (selectedVariation.image_url) {
+                    return selectedVariation.image_url;
+                  }
+                  if (selectedVariation.images && selectedVariation.images.length > 0) {
+                    return selectedVariation.images[0];
+                  }
+                }
+                return item.images && item.images.length > 0 ? item.images[0] : '/placeholder-product.jpg';
+              })()}
+              alt={selectedVariation ? `${item.name} - ${selectedVariation.name}` : item.name}
+              className="w-full h-32 object-cover rounded-xl border border-gray-200 transition-all duration-500 ease-in-out"
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
+                e.currentTarget.src = '/placeholder-product.jpg';
               }}
             />
           </div>
@@ -117,41 +130,53 @@ const VariationSelectionModal: React.FC<VariationSelectionModalProps> = ({
           {/* Size Variations */}
           {hasVariations && (
             <div className="mb-6">
-              <h4 className="font-bold text-gray-900 mb-4 text-lg">Choose Size</h4>
-              <div className="space-y-3">
-                {item.variations!.map((variation) => (
-                  <label
-                    key={variation.id}
-                    className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl hover:border-pink-400 hover:bg-pink-50 cursor-pointer transition-all duration-200"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="radio"
-                        name="variation"
-                        checked={selectedVariation?.id === variation.id}
-                        onChange={() => setSelectedVariation(variation)}
-                        className="text-pink-600 focus:ring-pink-500"
-                      />
-                      <div className="flex items-center space-x-3">
-                        {/* Variation Image */}
-                        {(variation.image_url || (variation.images && variation.images.length > 0)) && (
-                          <img
-                            src={variation.image_url || variation.images?.[0]}
-                            alt={variation.name}
-                            className="w-12 h-12 object-cover rounded-lg border border-gray-200"
+              <h4 className="font-bold text-gray-900 mb-4 text-lg">Choose Variant</h4>
+                  <div className="space-y-3">
+                    {item.variations!.map((variation) => (
+                      <label
+                        key={variation.id}
+                        className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                          selectedVariation?.id === variation.id
+                            ? 'border-pink-400 bg-pink-50 shadow-md'
+                            : 'border-gray-200 hover:border-pink-400 hover:bg-pink-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="radio"
+                            name="variation"
+                            checked={selectedVariation?.id === variation.id}
+                            onChange={() => setSelectedVariation(variation)}
+                            className="text-pink-600 focus:ring-pink-500"
                           />
-                        )}
-                        <span className="font-semibold text-gray-900">{variation.name}</span>
-                      </div>
-                    </div>
-                    <span className="text-pink-600 font-bold text-lg">
-                      ₱{((itemType === 'product' 
-                        ? (item as Product).discountedPrice || (item as Product).basePrice
-                        : (item as MenuItem).discountedPrice || (item as MenuItem).basePrice) + variation.price)}
-                    </span>
-                  </label>
-                ))}
-              </div>
+                          <div className="flex items-center space-x-3">
+                            {/* Variation Preview Image */}
+                            <div className="relative">
+                              <img
+                                src={variation.image_url || (variation.images && variation.images.length > 0 ? variation.images[0] : item.images[0]) || '/placeholder-product.jpg'}
+                                alt={variation.name}
+                                className="w-12 h-12 object-cover rounded-lg border border-gray-200"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder-product.jpg';
+                                }}
+                              />
+                              {selectedVariation?.id === variation.id && (
+                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 rounded-full flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-semibold text-gray-900">{variation.name}</span>
+                          </div>
+                        </div>
+                        <span className="text-pink-600 font-bold text-lg">
+                          ₱{((itemType === 'product' 
+                            ? (item as Product).discountedPrice || (item as Product).basePrice
+                            : (item as MenuItem).discountedPrice || (item as MenuItem).basePrice) + variation.price)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
             </div>
           )}
 

@@ -64,9 +64,9 @@ export const useMenu = () => {
           price: v.price,
           images: v.image_url ? [v.image_url] : [],
           image_url: v.image_url,
-          sku: v.sku,
-          stock: v.stock,
-          sort_order: v.sort_order,
+          sku: v.sku || undefined,
+          stock: v.stock || undefined,
+          sort_order: v.sort_order || undefined,
           created_at: v.created_at,
           updated_at: v.updated_at
         })) || [],
@@ -124,7 +124,8 @@ export const useMenu = () => {
             item.variations.map(v => ({
               menu_item_id: menuItem.id,
               name: v.name,
-              price: v.price
+              price: v.price,
+              image_url: v.image_url || null
             }))
           );
 
@@ -191,7 +192,8 @@ export const useMenu = () => {
             updates.variations.map(v => ({
               menu_item_id: id,
               name: v.name,
-              price: v.price
+              price: v.price,
+              image_url: v.image_url || null
             }))
           );
 

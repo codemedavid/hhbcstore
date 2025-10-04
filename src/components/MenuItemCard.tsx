@@ -110,7 +110,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
               )}
               {item.variations && item.variations.length > 0 && (
                 <div className="text-xs text-black-600 mt-1 font-medium">
-                  {item.variations.length} size{item.variations.length > 1 ? 's' : ''} available
+                  {item.variations.length} variant{item.variations.length > 1 ? 's' : ''} available
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowLeft, TrendingUp, Package, Users, FolderOpen, CreditCard, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ArrowLeft, TrendingUp, Package, Users, FolderOpen, CreditCard, Upload, RefreshCw, ExternalLink, LogOut } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
@@ -78,6 +78,10 @@ const AdminDashboard: React.FC = () => {
 
 
   const handleAddItem = () => {
+    console.log('🚀 handleAddItem called!');
+    console.log('Current view before change:', currentView);
+    console.log('All categories available:', allCategories.length);
+    
     setCurrentView('add');
     // Get the first main category (without parent_id)
     const mainCategories = allCategories.filter(cat => !cat.parent_id);
@@ -330,9 +334,7 @@ const AdminDashboard: React.FC = () => {
       errors.category = 'Category is required';
     }
 
-    if (!formData.subcategory) {
-      errors.subcategory = 'Subcategory is required';
-    }
+    // Subcategory is optional - removed validation requirement
 
     if (formData.stock !== undefined && formData.stock < 0) {
       errors.stock = 'Stock quantity cannot be negative';
@@ -354,29 +356,38 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSaveItem = async () => {
+    console.log('🔄 Save button clicked');
     console.log('Form data before validation:', formData);
     console.log('Form errors before validation:', formErrors);
     
     if (!validateForm()) {
-      console.log('Validation failed, errors:', formErrors);
+      console.log('❌ Validation failed, errors:', formErrors);
+      alert('Please fix the validation errors before saving');
       return;
     }
 
     try {
       setIsProcessing(true);
-      console.log('Saving item with data:', formData);
+      console.log('💾 Saving item with data:', formData);
       
       if (editingItem) {
+        console.log('📝 Updating existing item:', editingItem.id);
         await updateMenuItem(editingItem.id, formData);
       } else {
+        console.log('➕ Adding new item');
         await addMenuItem(formData as Omit<MenuItem, 'id'>);
       }
+      
+      console.log('✅ Item saved successfully');
       setCurrentView('items');
       setEditingItem(null);
       setFormErrors({});
-      console.log('Item saved successfully');
+      
+      // Refresh the menu items to show the new data
+      await refreshMenuItems();
+      
     } catch (error) {
-      console.error('Save error:', error);
+      console.error('❌ Save error:', error);
       alert('Failed to save item: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
@@ -1744,156 +1755,138 @@ const AdminDashboard: React.FC = () => {
 
   // Dashboard View
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-            <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-8 h-8 rounded-soft object-cover" />
-              <h1 className="text-2xl font-semibold text-black">
-                <span className="text-blue-400">H</span>
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover shadow-sm" />
+              <h1 className="text-xl sm:text-2xl font-bold text-black">
+                <span className="text-blue-500">H</span>
                 <span className="text-gray-600">&</span>
                 <span className="text-pink-500">hbc</span>
-                <span className="text-gray-600"> SHOPPE</span>
-                <span className="text-gray-500 text-lg"> Admin</span>
+                <span className="text-gray-700 ml-2 hidden sm:inline">SHOPPE</span>
+                <span className="text-gray-500 text-base sm:text-lg ml-2">Admin</span>
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <button
                 onClick={refreshMenuItems}
-                className="text-gray-600 hover:text-black transition-colors duration-200"
+                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition-all duration-200"
                 title="Refresh data from database"
               >
-                🔄 Refresh
+                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline text-sm font-medium">Refresh</span>
               </button>
               <a
                 href="/"
-                className="text-gray-600 hover:text-black transition-colors duration-200"
+                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition-all duration-200"
               >
-                View Website
+                <ExternalLink className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline text-sm font-medium">View Website</span>
               </a>
               <button
                 onClick={handleLogout}
-                className="text-gray-600 hover:text-black transition-colors duration-200"
+                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
               >
-                Logout
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline text-sm font-medium">Logout</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-600 rounded-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Welcome Header */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
+          <p className="text-sm sm:text-base text-gray-600">Welcome back! Here's what's happening with your store.</p>
+        </div>
+
+        {/* Stats Cards - Now Clickable Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          <button
+            onClick={() => {
+              console.log('📦 Total Items card clicked!');
+              setCurrentView('items');
+            }}
+            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
+            type="button"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Total Items</p>
+                <p className="text-3xl font-bold text-gray-900">{totalItems}</p>
+                <p className="text-xs text-green-600 mt-1">All products</p>
+              </div>
+              <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
                 <Package className="h-6 w-6 text-white" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="text-2xl font-semibold text-gray-900">{totalItems}</p>
-              </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-500 rounded-lg">
+          <button
+            onClick={() => {
+              console.log('📈 Available Items card clicked!');
+              setCurrentView('items');
+            }}
+            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
+            type="button"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Available Items</p>
+                <p className="text-3xl font-bold text-gray-900">{availableItems}</p>
+                <p className="text-xs text-blue-600 mt-1">Ready to sell</p>
+              </div>
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
                 <TrendingUp className="h-6 w-6 text-white" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Available Items</p>
-                <p className="text-2xl font-semibold text-gray-900">{availableItems}</p>
-              </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-cream-500 rounded-lg">
+          <button
+            onClick={() => {
+              console.log('⭐ Popular Items card clicked!');
+              setCurrentView('items');
+            }}
+            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
+            type="button"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Popular Items</p>
+                <p className="text-3xl font-bold text-gray-900">{popularItems}</p>
+                <p className="text-xs text-yellow-600 mt-1">Featured products</p>
+              </div>
+              <div className="p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg">
                 <Package className="h-6 w-6 text-white" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Popular Items</p>
-                <p className="text-2xl font-semibold text-gray-900">{popularItems}</p>
-              </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-500 rounded-lg">
-                <Users className="h-6 w-6 text-white" />
+          <button
+            onClick={() => {
+              console.log('🔄 Status card clicked!');
+              refreshMenuItems();
+            }}
+            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
+            type="button"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Status</p>
+                <p className="text-3xl font-bold text-gray-900">Online</p>
+                <p className="text-xs text-green-600 mt-1">System active</p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active</p>
-                <p className="text-2xl font-semibold text-gray-900">Online</p>
+              <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-playfair font-medium text-black mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button
-                onClick={handleAddItem}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
-              >
-                <Plus className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Add Item</span>
-              </button>
-              <button
-                onClick={() => setCurrentView('items')}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
-              >
-                <Package className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Manage Items</span>
-              </button>
-              <button
-                onClick={() => setCurrentView('categories')}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
-              >
-                <FolderOpen className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Manage Categories</span>
-              </button>
-              <button
-                onClick={() => setCurrentView('payments')}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
-              >
-                <CreditCard className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Payment Methods</span>
-              </button>
-              <button
-                onClick={handleAddVoucher}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
-              >
-                <Plus className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Create Voucher</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-playfair font-medium text-black mb-4">Categories Overview</h3>
-            <div className="space-y-3">
-              {categoryCounts.map((category) => (
-                <div key={category.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{category.icon}</span>
-                    <span className="font-medium text-gray-900">{category.name}</span>
-                  </div>
-                  <span className="text-sm text-gray-500">{category.count} items</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
   );
@@ -1991,59 +1984,129 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-playfair font-medium text-black mb-4">Quick Actions</h3>
-            <div className="space-y-3">
+        {/* Quick Actions & Categories */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Quick Actions */}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+              Quick Actions
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
-                onClick={handleAddItem}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                onClick={() => {
+                  console.log('🎯 Add Item button clicked!');
+                  handleAddItem();
+                }}
+                className="flex items-center space-x-3 p-4 text-left bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 cursor-pointer"
+                type="button"
               >
-                <Plus className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Add Item</span>
+                <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-lg">
+                  <Plus className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 block">Add Item</span>
+                  <span className="text-xs text-gray-500">Create new product</span>
+                </div>
               </button>
+              
               <button
-                onClick={() => setCurrentView('items')}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                onClick={() => {
+                  console.log('🎯 Manage Items button clicked!');
+                  setCurrentView('items');
+                }}
+                className="flex items-center space-x-3 p-4 text-left bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 cursor-pointer"
+                type="button"
               >
-                <Package className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Manage Items</span>
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
+                  <Package className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 block">Manage Items</span>
+                  <span className="text-xs text-gray-500">Edit products</span>
+                </div>
               </button>
+              
               <button
                 onClick={() => setCurrentView('categories')}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                className="flex items-center space-x-3 p-4 text-left bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
               >
-                <FolderOpen className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Manage Categories</span>
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                  <FolderOpen className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 block">Categories</span>
+                  <span className="text-xs text-gray-500">Organize products</span>
+                </div>
               </button>
+              
               <button
                 onClick={() => setCurrentView('payments')}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                className="flex items-center space-x-3 p-4 text-left bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
               >
-                <CreditCard className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Payment Methods</span>
+                <div className="p-2 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg">
+                  <CreditCard className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 block">Payments</span>
+                  <span className="text-xs text-gray-500">Payment methods</span>
+                </div>
               </button>
+              
               <button
-                onClick={handleAddVoucher}
-                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                onClick={() => {
+                  console.log('🎯 Create Voucher button clicked!');
+                  handleAddVoucher();
+                }}
+                className="flex items-center space-x-3 p-4 text-left bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
               >
-                <Plus className="h-5 w-5 text-gray-400" />
-                <span className="font-medium text-gray-900">Create Voucher</span>
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+                  <Plus className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 block">Create Voucher</span>
+                  <span className="text-xs text-gray-500">Discount codes</span>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setCurrentView('vouchers')}
+                className="flex items-center space-x-3 p-4 text-left bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-gray-100"
+              >
+                <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
+                  <Package className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 block">Manage Vouchers</span>
+                  <span className="text-xs text-gray-500">View all vouchers</span>
+                </div>
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-playfair font-medium text-black mb-4">Categories Overview</h3>
-            <div className="space-y-3">
+          {/* Categories Overview */}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+              Categories Overview
+            </h3>
+            <div className="space-y-4">
               {categoryCounts.map((category) => (
-                <div key={category.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{category.icon}</span>
-                    <span className="font-medium text-gray-900">{category.name}</span>
+                <div key={category.id} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">{category.icon}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-900 block">{category.name}</span>
+                      <span className="text-xs text-gray-500">Category</span>
+                    </div>
                   </div>
-                  <span className="text-sm text-gray-500">{category.count} items</span>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-gray-900">{category.count}</span>
+                    <span className="text-xs text-gray-500 block">items</span>
+                  </div>
                 </div>
               ))}
             </div>

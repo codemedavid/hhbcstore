@@ -104,7 +104,7 @@ export default function ProductCard({ product, addToCart, cartItems }: ProductCa
         {product.variations && product.variations.length > 0 && (
           <div className="mb-4">
             <p className="text-xs font-medium text-soft-700 mb-2">
-              🎨 {product.variations.length} size{product.variations.length > 1 ? 's' : ''} available
+              {product.variations.length} variant{product.variations.length > 1 ? 's' : ''} available
             </p>
             <div className="flex flex-wrap gap-2">
               {product.variations.slice(0, 3).map((variation) => (
@@ -188,8 +188,6 @@ export default function ProductCard({ product, addToCart, cartItems }: ProductCa
               ? '✅ Added!' 
               : isInCart 
               ? '✨ In Cart' 
-              : ((product.variations && product.variations.length > 0) || (product.addOns && product.addOns.length > 0))
-              ? '🎨 Customize & Add'
               : product.available && (product.stock ?? 0) > 0 
               ? '🛍️ Add to Cart' 
               : '😔 Out of Stock'

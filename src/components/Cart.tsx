@@ -61,34 +61,61 @@ const Cart: React.FC<CartProps> = ({
       </div>
 
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border border-brown-100">
-        {cartItems.map((item, index) => (
-          <div key={item.id} className={`p-6 ${index !== cartItems.length - 1 ? 'border-b border-brown-200' : ''}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="text-xl font-noto font-bold text-black-900 mb-2">{item.name}</h3>
-                {item.selectedVariation && (
-                  <p className="text-sm text-brown-600 mb-1 font-medium">Size: {item.selectedVariation.name}</p>
-                )}
-                {item.selectedAddOns && item.selectedAddOns.length > 0 && (
-                  <p className="text-sm text-brown-600 mb-1 font-medium">
-                    Add-ons: {item.selectedAddOns.map(addOn => 
-                      addOn.quantity && addOn.quantity > 1 
-                        ? `${addOn.name} x${addOn.quantity}`
-                        : addOn.name
-                    ).join(', ')}
-                  </p>
-                )}
-                <p className="text-xl font-bold text-green-600">₱{Math.round(item.totalPrice / item.quantity)} each</p>
-                {/* Stock Information */}
-                <p className="text-xs text-soft-500 mt-1">
-                  📦 {item.stock ?? 0} available in stock
-                  {item.selectedVariation && item.stock !== item.selectedVariation.stock && (
-                    <span className="text-pink-500 ml-1">
-                      (variation: {item.selectedVariation.stock})
-                    </span>
+        {cartItems.map((item, index) => {
+          // Get the display image - prefer variation image, fallback to product image
+          const getDisplayImage = () => {
+            if (item.selectedVariation) {
+              // Check for database image_url first, then fallback to images array
+              if (item.selectedVariation.image_url) {
+                return item.selectedVariation.image_url;
+              }
+              if (item.selectedVariation.images && item.selectedVariation.images.length > 0) {
+                return item.selectedVariation.images[0];
+              }
+            }
+            return item.images[0] || '/placeholder-product.jpg';
+          };
+
+          return (
+            <div key={item.id} className={`p-6 ${index !== cartItems.length - 1 ? 'border-b border-brown-200' : ''}`}>
+              <div className="flex items-center justify-between">
+                {/* Product Image */}
+                <div className="flex-shrink-0 mr-6">
+                  <img
+                    src={getDisplayImage()}
+                    alt={item.name}
+                    className="w-20 h-20 object-cover rounded-xl border border-brown-200 shadow-soft"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder-product.jpg';
+                    }}
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <h3 className="text-xl font-noto font-bold text-black-900 mb-2">{item.name}</h3>
+                  {item.selectedVariation && (
+                    <p className="text-sm text-brown-600 mb-1 font-medium">Size: {item.selectedVariation.name}</p>
                   )}
-                </p>
-              </div>
+                  {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                    <p className="text-sm text-brown-600 mb-1 font-medium">
+                      Add-ons: {item.selectedAddOns.map(addOn => 
+                        addOn.quantity && addOn.quantity > 1 
+                          ? `${addOn.name} x${addOn.quantity}`
+                          : addOn.name
+                      ).join(', ')}
+                    </p>
+                  )}
+                  <p className="text-xl font-bold text-green-600">₱{Math.round(item.totalPrice / item.quantity)} each</p>
+                  {/* Stock Information */}
+                  <p className="text-xs text-soft-500 mt-1">
+                    📦 {item.stock ?? 0} available in stock
+                    {item.selectedVariation && item.stock !== item.selectedVariation.stock && (
+                      <span className="text-pink-500 ml-1">
+                        (variation: {item.selectedVariation.stock})
+                      </span>
+                    )}
+                  </p>
+                </div>
               
               <div className="flex items-center space-x-4 ml-4">
                 <div className="flex items-center space-x-3 bg-green-100 rounded-full p-1 border border-green-200">
@@ -131,7 +158,8 @@ const Cart: React.FC<CartProps> = ({
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="bg-gradient-to-r from-brown-50 to-green-50 rounded-2xl shadow-lg p-8 border border-brown-200">
