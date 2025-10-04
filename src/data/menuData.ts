@@ -211,8 +211,8 @@ export const categories = [
 ];
 
 export const addOnCategories = [
-  { id: 'spice', name: 'Spice Level' },
-  { id: 'protein', name: 'Extra Protein' },
-  { id: 'sauce', name: 'Sauces' },
-  { id: 'extras', name: 'Extras' }
+  { id: 'size', name: 'Size Options' },
+  { id: 'color', name: 'Color Variants' },
+  { id: 'finish', name: 'Finish Types' },
+  { id: 'extras', name: 'Additional Items' }
 ];
