@@ -1,70 +1,47 @@
 import { useState } from 'react';
 import { Product, CartItem, Variation, AddOn } from '../types';
 import { ShoppingCart, Heart, Eye } from 'lucide-react';
+import VariationSelectionModal from './VariationSelectionModal';
 
 interface ProductCardProps {
   product: Product;
   addToCart: (item: Product, quantity: number, variation?: Variation, addOns?: AddOn[]) => boolean;
   cartItems: CartItem[];
-  updateQuantity: (id: string, quantity: number) => void;
 }
 
-export default function ProductCard({ product, addToCart, cartItems, updateQuantity }: ProductCardProps) {
-  const [selectedVariation, setSelectedVariation] = useState<Variation | undefined>(undefined);
-  const [selectedAddOns] = useState<AddOn[]>([]);
-  const [quantity, setQuantity] = useState(1);
-  const [showDetails, setShowDetails] = useState(false);
+export default function ProductCard({ product, addToCart, cartItems }: ProductCardProps) {
+  const [showVariationModal, setShowVariationModal] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
   const isInCart = cartItems.some(item => item.id === product.id);
-  const cartItem = cartItems.find(item => item.id === product.id);
 
   const calculateTotalPrice = () => {
-    let total = product.discountedPrice || product.basePrice;
-    if (selectedVariation) {
-      total += selectedVariation.price;
-    }
-    selectedAddOns.forEach(addOn => {
-      total += addOn.price * (addOn.quantity || 1);
-    });
-    return total * quantity;
+    return product.discountedPrice || product.basePrice;
   };
 
   const handleAddToCart = () => {
-    const success = addToCart(product, quantity, selectedVariation, selectedAddOns);
-    
+    // Check if product has variations or add-ons that require selection
+    if ((product.variations && product.variations.length > 0) || (product.addOns && product.addOns.length > 0)) {
+      setShowVariationModal(true);
+    } else {
+      // Direct add to cart for products without variations
+      const success = addToCart(product, 1);
+      if (success) {
+        setJustAdded(true);
+        setTimeout(() => setJustAdded(false), 2000);
+      }
+    }
+  };
+
+  const handleAddToCartFromModal = (item: Product, quantity: number, variation?: Variation, addOns?: AddOn[]) => {
+    const success = addToCart(item, quantity, variation, addOns);
     if (success) {
-      // Show success animation
       setJustAdded(true);
       setTimeout(() => setJustAdded(false), 2000);
     }
   };
 
-  const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity > 0) {
-      // Check stock availability
-      const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
-      if (newQuantity > availableStock) {
-        alert(`Only ${availableStock} items available in stock!`);
-        return;
-      }
-      setQuantity(newQuantity);
-      if (isInCart && cartItem) {
-        updateQuantity(product.id, newQuantity);
-      }
-    }
-  };
-
   const getDisplayImage = () => {
-    if (selectedVariation) {
-      // Check for database image_url first, then fallback to images array
-      if (selectedVariation.image_url) {
-        return selectedVariation.image_url;
-      }
-      if (selectedVariation.images && selectedVariation.images.length > 0) {
-        return selectedVariation.images[0];
-      }
-    }
     return product.images[0] || '/placeholder-product.jpg';
   };
 
@@ -98,7 +75,7 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
             <Heart className="w-4 h-4 text-pink-500" />
           </button>
           <button 
-            onClick={() => setShowDetails(true)}
+            onClick={() => {/* TODO: Implement product details modal */}}
             className="p-2 bg-pastel-white/90 backdrop-blur-sm rounded-pill shadow-soft hover:bg-blue-100 transition-colors hover:scale-110"
           >
             <Eye className="w-4 h-4 text-blue-500" />
@@ -123,23 +100,20 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
           {product.description}
         </p>
 
-        {/* Variations */}
+        {/* Variations Info */}
         {product.variations && product.variations.length > 0 && (
           <div className="mb-4">
-            <p className="text-xs font-medium text-soft-700 mb-2">🎨 Variations:</p>
+            <p className="text-xs font-medium text-soft-700 mb-2">
+              🎨 {product.variations.length} size{product.variations.length > 1 ? 's' : ''} available
+            </p>
             <div className="flex flex-wrap gap-2">
               {product.variations.slice(0, 3).map((variation) => (
-                <button
+                <span
                   key={variation.id}
-                  onClick={() => setSelectedVariation(variation)}
-                  className={`px-3 py-1 text-xs rounded-pill border transition-all duration-200 ${
-                    selectedVariation?.id === variation.id
-                      ? 'bg-pink-200 border-pink-400 text-pink-700 shadow-soft'
-                      : 'bg-pastel-pink/50 border-pink-200 text-soft-700 hover:bg-pink-100 hover:scale-105'
-                  }`}
+                  className="px-3 py-1 text-xs rounded-pill border bg-pastel-pink/50 border-pink-200 text-soft-700"
                 >
                   {variation.name}
-                </button>
+                </span>
               ))}
               {product.variations.length > 3 && (
                 <span className="text-xs text-soft-500 px-2 py-1">
@@ -147,6 +121,15 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Add-ons Info */}
+        {product.addOns && product.addOns.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-medium text-soft-700 mb-2">
+              ✨ {product.addOns.length} add-on{product.addOns.length > 1 ? 's' : ''} available
+            </p>
           </div>
         )}
 
@@ -159,11 +142,11 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
                   ₱{calculateTotalPrice().toLocaleString()}
                 </span>
                 <span className="text-sm text-gray-400 line-through">
-                  ₱{(product.basePrice * quantity).toLocaleString()}
+                  ₱{product.basePrice.toLocaleString()}
                 </span>
-                {selectedVariation && (
+                {(product.variations && product.variations.length > 0) && (
                   <span className="text-sm text-pink-500">
-                    (+₱{selectedVariation.price.toLocaleString()})
+                    starting
                   </span>
                 )}
               </div>
@@ -171,12 +154,12 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
               <div>
                 <span className="text-xl font-bold text-soft-800">
                   ₱{calculateTotalPrice().toLocaleString()}
+                  {(product.variations && product.variations.length > 0) && (
+                    <span className="text-sm text-pink-500 ml-2">
+                      starting
+                    </span>
+                  )}
                 </span>
-                {selectedVariation && (
-                  <span className="text-sm text-pink-500 ml-2">
-                    (+₱{selectedVariation.price.toLocaleString()})
-                  </span>
-                )}
               </div>
             )}
           </div>
@@ -185,52 +168,17 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
           )}
         </div>
 
-        {/* Quantity and Add to Cart */}
+        {/* Add to Cart */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center border border-pink-200 rounded-cute bg-pastel-white">
-            <button
-              onClick={() => handleQuantityChange(quantity - 1)}
-              className="px-3 py-2 text-pink-600 hover:bg-pink-100 rounded-l-cute transition-colors"
-            >
-              -
-            </button>
-            <span className="px-4 py-2 text-sm font-bold min-w-[2rem] text-center text-soft-700">
-              {quantity}
-            </span>
-            <button
-              onClick={() => handleQuantityChange(quantity + 1)}
-              disabled={(() => {
-                const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
-                return quantity >= availableStock;
-              })()}
-              className={`px-3 py-2 rounded-r-cute transition-colors ${
-                (() => {
-                  const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
-                  return quantity >= availableStock
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-pink-600 hover:bg-pink-100';
-                })()
-              }`}
-            >
-              +
-            </button>
-          </div>
-          
           <button
             onClick={handleAddToCart}
-            disabled={!product.available || (() => {
-              const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
-              return availableStock <= 0;
-            })()}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-cute font-bold transition-all duration-200 ${
+            disabled={!product.available || (product.stock ?? 0) <= 0}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-cute font-bold transition-all duration-200 ${
               justAdded
                 ? 'bg-green-500 text-white animate-pulse'
                 : isInCart
                 ? 'bg-pink-200 text-pink-700 border border-pink-300 shadow-soft'
-                : product.available && (() => {
-                    const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
-                    return availableStock > 0;
-                  })()
+                : product.available && (product.stock ?? 0) > 0
                 ? 'bg-gradient-to-r from-pink-400 to-pink-500 text-white hover:from-pink-500 hover:to-pink-600 shadow-floating hover:scale-105'
                 : 'bg-soft-300 text-soft-500 cursor-not-allowed'
             }`}
@@ -240,10 +188,11 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
               ? '✅ Added!' 
               : isInCart 
               ? '✨ In Cart' 
-              : (() => {
-                  const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
-                  return product.available && availableStock > 0 ? '🛍️ Add to Cart' : '😔 Out of Stock';
-                })()
+              : ((product.variations && product.variations.length > 0) || (product.addOns && product.addOns.length > 0))
+              ? '🎨 Customize & Add'
+              : product.available && (product.stock ?? 0) > 0 
+              ? '🛍️ Add to Cart' 
+              : '😔 Out of Stock'
             }
           </button>
         </div>
@@ -251,16 +200,11 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
         {/* Stock Status */}
         <div className="mt-3 text-center">
           {(() => {
-            const availableStock = selectedVariation?.stock ?? product.stock ?? 0;
+            const availableStock = product.stock ?? 0;
             if (availableStock > 0) {
               return (
                 <p className="text-xs text-soft-500">
                   📦 {availableStock} in stock
-                  {selectedVariation && product.stock !== selectedVariation.stock && (
-                    <span className="text-pink-500 ml-1">
-                      (variation: {selectedVariation.stock})
-                    </span>
-                  )}
                 </p>
               );
             } else {
@@ -273,6 +217,15 @@ export default function ProductCard({ product, addToCart, cartItems, updateQuant
           })()}
         </div>
       </div>
+
+      {/* Variation Selection Modal */}
+      <VariationSelectionModal
+        isOpen={showVariationModal}
+        onClose={() => setShowVariationModal(false)}
+        onAddToCart={handleAddToCartFromModal}
+        item={product}
+        itemType="product"
+      />
     </div>
   );
 }

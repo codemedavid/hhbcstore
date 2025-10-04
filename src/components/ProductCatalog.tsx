@@ -9,13 +9,12 @@ interface ProductCatalogProps {
   products: Product[];
   addToCart: (item: Product, quantity: number, variation?: Variation, addOns?: AddOn[]) => boolean;
   cartItems: CartItem[];
-  updateQuantity: (id: string, quantity: number) => void;
   selectedCategory?: string;
   onCategoryChange?: (categoryId: string) => void;
 }
 
 
-export default function ProductCatalog({ products, addToCart, cartItems, updateQuantity, selectedCategory: propSelectedCategory, onCategoryChange }: ProductCatalogProps) {
+export default function ProductCatalog({ products, addToCart, cartItems, selectedCategory: propSelectedCategory, onCategoryChange }: ProductCatalogProps) {
   const { categories, loading: categoriesLoading } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState(propSelectedCategory || 'all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,7 +122,6 @@ export default function ProductCatalog({ products, addToCart, cartItems, updateQ
               product={product}
               addToCart={addToCart}
               cartItems={cartItems}
-              updateQuantity={updateQuantity}
             />
           ))}
         </div>

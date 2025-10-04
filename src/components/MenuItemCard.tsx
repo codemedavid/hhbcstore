@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Minus, X, ShoppingCart } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
+import VariationSelectionModal from './VariationSelectionModal';
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -15,39 +16,19 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   quantity, 
   onUpdateQuantity 
 }) => {
-  const [showCustomization, setShowCustomization] = useState(false);
-  const [selectedVariation, setSelectedVariation] = useState<Variation | undefined>(
-    item.variations?.[0]
-  );
-  const [selectedAddOns, setSelectedAddOns] = useState<(AddOn & { quantity: number })[]>([]);
+  const [showVariationModal, setShowVariationModal] = useState(false);
 
-  const calculatePrice = () => {
-    let price = item.discountedPrice || item.basePrice;
-    if (selectedVariation) {
-      price = (item.discountedPrice || item.basePrice) + selectedVariation.price;
-    }
-    selectedAddOns.forEach(addOn => {
-      price += addOn.price * addOn.quantity;
-    });
-    return price;
-  };
 
   const handleAddToCart = () => {
     if (item.variations?.length || item.addOns?.length) {
-      setShowCustomization(true);
+      setShowVariationModal(true);
     } else {
       onAddToCart(item, 1);
     }
   };
 
-  const handleCustomizedAddToCart = () => {
-    // Convert selectedAddOns back to regular AddOn array for cart
-    const addOnsForCart: AddOn[] = selectedAddOns.flatMap(addOn => 
-      Array(addOn.quantity).fill({ ...addOn, quantity: undefined })
-    );
-    onAddToCart(item, 1, selectedVariation, addOnsForCart);
-    setShowCustomization(false);
-    setSelectedAddOns([]);
+  const handleAddToCartFromModal = (item: MenuItem, quantity: number, variation?: Variation, addOns?: AddOn[]) => {
+    onAddToCart(item, quantity, variation, addOns);
   };
 
   const handleIncrement = () => {
@@ -60,35 +41,6 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
     }
   };
 
-  const updateAddOnQuantity = (addOn: AddOn, quantity: number) => {
-    setSelectedAddOns(prev => {
-      const existingIndex = prev.findIndex(a => a.id === addOn.id);
-      
-      if (quantity === 0) {
-        // Remove add-on if quantity is 0
-        return prev.filter(a => a.id !== addOn.id);
-      }
-      
-      if (existingIndex >= 0) {
-        // Update existing add-on quantity
-        const updated = [...prev];
-        updated[existingIndex] = { ...updated[existingIndex], quantity };
-        return updated;
-      } else {
-        // Add new add-on with quantity
-        return [...prev, { ...addOn, quantity }];
-      }
-    });
-  };
-
-  const groupedAddOns = item.addOns?.reduce((groups, addOn) => {
-    const category = addOn.category;
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(addOn);
-    return groups;
-  }, {} as Record<string, AddOn[]>);
 
   return (
     <>
@@ -106,9 +58,9 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         )}
         
         <div className="aspect-w-16 aspect-h-9 bg-gradient-to-br from-black-50/60 to-brown-50/60 relative overflow-hidden">
-          {item.image ? (
+          {item.images && item.images.length > 0 ? (
             <img
-              src={item.image}
+              src={item.images[0]}
               alt={item.name}
               className="w-full h-48 object-cover transition-opacity duration-300"
               loading="lazy"
@@ -123,7 +75,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
               style={{ opacity: 0 }}
             />
           ) : null}
-          <div className={`absolute inset-0 flex items-center justify-center ${item.image ? 'hidden' : ''}`}>
+          <div className={`absolute inset-0 flex items-center justify-center ${item.images && item.images.length > 0 ? 'hidden' : ''}`}>
             <div className="text-6xl opacity-30">☕</div>
           </div>
         </div>
@@ -205,147 +157,14 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         </div>
       </div>
 
-      {/* Customization Modal */}
-      {showCustomization && (
-        <div className="fixed inset-0 bg-black-900 bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-brown-200">
-            <div className="sticky top-0 bg-gradient-to-r from-brown-50 to-green-50 border-b border-brown-200 p-6 flex items-center justify-between">
-              <h3 className="text-xl font-noto font-bold text-black-900">Customize {item.name}</h3>
-              <button
-                onClick={() => setShowCustomization(false)}
-                className="p-2 hover:bg-brown-200 rounded-full transition-colors duration-200 text-brown-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              {/* Size Variations */}
-              {item.variations && item.variations.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-bold text-black-900 mb-4 text-lg">Choose Size</h4>
-                  <div className="space-y-3">
-                    {item.variations.map((variation) => (
-                      <label
-                        key={variation.id}
-                        className="flex items-center justify-between p-4 border-2 border-brown-200 rounded-xl hover:border-green-400 hover:bg-green-50 cursor-pointer transition-all duration-200"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="radio"
-                            name="variation"
-                            checked={selectedVariation?.id === variation.id}
-                            onChange={() => setSelectedVariation(variation)}
-                            className="text-green-600 focus:ring-green-500"
-                          />
-                          <div className="flex items-center space-x-3">
-                            {/* Variation Image */}
-                            {(variation.image_url || (variation.images && variation.images.length > 0)) && (
-                              <img
-                                src={variation.image_url || variation.images?.[0]}
-                                alt={variation.name}
-                                className="w-12 h-12 object-cover rounded-lg border border-gray-200"
-                              />
-                            )}
-                            <span className="font-semibold text-black-900">{variation.name}</span>
-                          </div>
-                        </div>
-                        <span className="text-green-600 font-bold text-lg">
-                          ₱{(item.discountedPrice || item.basePrice) + variation.price}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Add-ons */}
-              {groupedAddOns && Object.keys(groupedAddOns).length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-bold text-black-900 mb-4 text-lg">Add-ons</h4>
-                  {Object.entries(groupedAddOns).map(([category, addOns]) => (
-                    <div key={category} className="mb-4">
-                      <h5 className="text-sm font-semibold text-brown-700 mb-3 capitalize">
-                        {category.replace('-', ' ')}
-                      </h5>
-                      <div className="space-y-3">
-                        {addOns.map((addOn) => (
-                          <div
-                            key={addOn.id}
-                            className="flex items-center justify-between p-4 border border-brown-200 rounded-xl hover:border-green-400 hover:bg-green-50 transition-all duration-200"
-                          >
-                            <div className="flex-1">
-                              <span className="font-semibold text-black-900">{addOn.name}</span>
-                              <div className="text-sm text-brown-600">
-                                {addOn.price > 0 ? `₱${addOn.price} each` : 'Free'}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              {selectedAddOns.find(a => a.id === addOn.id) ? (
-                                <div className="flex items-center space-x-2 bg-green-100 rounded-full p-1 border border-green-200">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const current = selectedAddOns.find(a => a.id === addOn.id);
-                                      updateAddOnQuantity(addOn, (current?.quantity || 1) - 1);
-                                    }}
-                                    className="p-1 hover:bg-green-200 rounded-full transition-colors duration-200 text-green-700"
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </button>
-                                  <span className="font-bold text-black-900 min-w-[20px] text-center text-sm">
-                                    {selectedAddOns.find(a => a.id === addOn.id)?.quantity || 0}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const current = selectedAddOns.find(a => a.id === addOn.id);
-                                      updateAddOnQuantity(addOn, (current?.quantity || 0) + 1);
-                                    }}
-                                    className="p-1 hover:bg-green-200 rounded-full transition-colors duration-200 text-green-700"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => updateAddOnQuantity(addOn, 1)}
-                                  className="flex items-center space-x-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-full hover:from-green-700 hover:to-green-800 transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-green-500/25"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                  <span>Add</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Price Summary */}
-              <div className="border-t border-brown-200 pt-4 mb-6">
-                <div className="flex items-center justify-between text-2xl font-noto font-bold text-black-900">
-                  <span>Total:</span>
-                  <span className="text-green-600">₱{calculatePrice()}</span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleCustomizedAddToCart}
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-bold flex items-center justify-center space-x-2 shadow-lg hover:shadow-green-500/25 text-lg"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span>Add to Cart - ₱{calculatePrice()}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Variation Selection Modal */}
+      <VariationSelectionModal
+        isOpen={showVariationModal}
+        onClose={() => setShowVariationModal(false)}
+        onAddToCart={handleAddToCartFromModal}
+        item={item}
+        itemType="menu"
+      />
     </>
   );
 };

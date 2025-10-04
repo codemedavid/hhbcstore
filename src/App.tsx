@@ -67,7 +67,6 @@ function MainApp() {
             products={products}
             addToCart={handleAddToCart}
             cartItems={cart.cartItems}
-            updateQuantity={cart.updateQuantity}
             selectedCategory={selectedCategory}
             onCategoryChange={handleCategoryClick}
           />
