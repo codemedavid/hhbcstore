@@ -233,7 +233,6 @@ ${cartItems.map(item => {
 
 💳 Payment: ${selectedPaymentMethod?.name || paymentMethod}
 📦 Shipping Fee: Rates varies depending on packaging size and location of receiver.
-📸 Payment Screenshot: Please attach your payment receipt screenshot
 
 ${notes ? `📝 Notes: ${notes}` : ''}
 
