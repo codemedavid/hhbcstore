@@ -228,11 +228,11 @@ ${cartItems.map(item => {
 }).join('\n')}
 
 💰 SUBTOTAL: ₱${totalPrice}
-🚚 SHIPPING FEE: ₱${shippingFee.toFixed(2)}
+🚚 SHIPPING FEE: ₱0
 💰 TOTAL: ₱${totalWithShipping}
 
 💳 Payment: ${selectedPaymentMethod?.name || paymentMethod}
-📸 Payment Screenshot: Please attach your payment receipt screenshot
+📦 Shipping Fee: Rates varies depending on packaging size and location of receiver.
 
 ${notes ? `📝 Notes: ${notes}` : ''}
 
