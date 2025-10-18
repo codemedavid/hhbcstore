@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowLeft, TrendingUp, Package, Users, FolderOpen, CreditCard, Upload, RefreshCw, ExternalLink, LogOut } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ArrowLeft, TrendingUp, Package, Users, FolderOpen, CreditCard, Upload } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
@@ -602,9 +602,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Dashboard Stats
-  const totalItems = menuItems.length;
-  const popularItems = menuItems.filter(item => item.popular).length;
-  const availableItems = menuItems.filter(item => item.available).length;
   const categoryCounts = categories.map(cat => ({
     ...cat,
     count: menuItems.filter(item => item.category === cat.id).length
@@ -1755,145 +1752,6 @@ const AdminDashboard: React.FC = () => {
 
   // Dashboard View
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <img src="/logo.jpg" alt="H&HBC SHOPPE Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover shadow-sm" />
-              <h1 className="text-xl sm:text-2xl font-bold text-black">
-                <span className="text-blue-500">H</span>
-                <span className="text-gray-600">&</span>
-                <span className="text-pink-500">hbc</span>
-                <span className="text-gray-700 ml-2 hidden sm:inline">SHOPPE</span>
-                <span className="text-gray-500 text-base sm:text-lg ml-2">Admin</span>
-              </h1>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <button
-                onClick={refreshMenuItems}
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition-all duration-200"
-                title="Refresh data from database"
-              >
-                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden sm:inline text-sm font-medium">Refresh</span>
-              </button>
-              <a
-                href="/"
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition-all duration-200"
-              >
-                <ExternalLink className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden sm:inline text-sm font-medium">View Website</span>
-              </a>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
-              >
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden sm:inline text-sm font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Welcome Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
-          <p className="text-sm sm:text-base text-gray-600">Welcome back! Here's what's happening with your store.</p>
-        </div>
-
-        {/* Stats Cards - Now Clickable Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          <button
-            onClick={() => {
-              console.log('📦 Total Items card clicked!');
-              setCurrentView('items');
-            }}
-            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
-            type="button"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Items</p>
-                <p className="text-3xl font-bold text-gray-900">{totalItems}</p>
-                <p className="text-xs text-green-600 mt-1">All products</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
-                <Package className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => {
-              console.log('📈 Available Items card clicked!');
-              setCurrentView('items');
-            }}
-            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
-            type="button"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Available Items</p>
-                <p className="text-3xl font-bold text-gray-900">{availableItems}</p>
-                <p className="text-xs text-blue-600 mt-1">Ready to sell</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => {
-              console.log('⭐ Popular Items card clicked!');
-              setCurrentView('items');
-            }}
-            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
-            type="button"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Popular Items</p>
-                <p className="text-3xl font-bold text-gray-900">{popularItems}</p>
-                <p className="text-xs text-yellow-600 mt-1">Featured products</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg">
-                <Package className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => {
-              console.log('🔄 Status card clicked!');
-              refreshMenuItems();
-            }}
-            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
-            type="button"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Status</p>
-                <p className="text-3xl font-bold text-gray-900">Online</p>
-                <p className="text-xs text-green-600 mt-1">System active</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              </div>
-            </div>
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-
-
-
-  return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -2111,6 +1969,80 @@ const AdminDashboard: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Vouchers Overview */}
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center">
+              <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+              Active Vouchers
+            </h3>
+            <button
+              onClick={handleAddVoucher}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
+            >
+              <Plus className="h-4 w-4 inline mr-1" />
+              Add Voucher
+            </button>
+          </div>
+          
+          {vouchers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <CreditCard className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-sm">No vouchers created yet</p>
+              <button
+                onClick={handleAddVoucher}
+                className="mt-4 text-purple-600 hover:text-purple-700 text-sm font-medium"
+              >
+                Create your first voucher →
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {vouchers.filter(v => v.isActive).slice(0, 5).map((voucher) => (
+                <div 
+                  key={voucher.id} 
+                  className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center">
+                      <CreditCard className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-gray-900 block text-lg">{voucher.code}</span>
+                      <span className="text-xs text-gray-500">
+                        {voucher.discountType === 'percentage' 
+                          ? `${voucher.discountValue}% OFF` 
+                          : `₱${voucher.discountValue} OFF`}
+                        {voucher.minOrderAmount > 0 && ` • Min: ₱${voucher.minOrderAmount}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-gray-900 block">
+                      {voucher.usedCount || 0}
+                      {voucher.maxUses ? `/${voucher.maxUses}` : ''} uses
+                    </span>
+                    {voucher.expiresAt && (
+                      <span className="text-xs text-gray-500 block">
+                        Expires: {new Date(voucher.expiresAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {vouchers.filter(v => v.isActive).length > 5 && (
+                <button
+                  onClick={() => setCurrentView('vouchers')}
+                  className="w-full py-3 text-center text-purple-600 hover:text-purple-700 text-sm font-medium hover:bg-purple-50 rounded-lg transition-all duration-200"
+                >
+                  View all {vouchers.filter(v => v.isActive).length} vouchers →
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
